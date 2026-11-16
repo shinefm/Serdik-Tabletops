@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/meta/owners) &&
+        request.auth.uid in get(/databases/$(database)/documents/meta/owners).data.uids;
+    }
+    // meja yang sedang dimainkan + ringkasan untuk lobi + kunci sementara
+    match /games/{id}  { allow read, write: if signedIn(); }
+    match /lobby/{id}  { allow read, write: if signedIn(); }
+    match /locks/{id}  { allow read, write: if signedIn(); }
+    // hasil game: siapa pun yang login boleh mencatat hasil baru, hanya pemilik yang boleh mengubah/menghapus
+    match /results/{id} {
+      allow read, create: if signedIn();
+      allow update, delete: if isOwner();
+    }
+    // rekap poin semua pemain (diperbarui oleh pemain di meja yang sama)
+    match /stats/{uid} { allow read, write: if signedIn(); }
+    // data latihan bot: tiap orang hanya menulis miliknya
+    match /replays/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn() && id.matches('r_' + request.auth.uid + '_.*');
+    }
+    match /saves/{uid} { allow read, write: if signedIn() && request.auth.uid == uid; }
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+    match /meta/{id} { allow read: if signedIn(); allow write: if false; }
+  }
+}

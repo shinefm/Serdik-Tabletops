@@ -1,0 +1,47 @@
+import asyncio,json
+from playwright.async_api import async_playwright
+U='file:///home/claude/serdik-tabletops/dev/fbapp/test_out/index.html'
+async def main():
+    async with async_playwright() as p:
+        b=await p.chromium.launch(executable_path='/usr/bin/google-chrome')
+        ctx=await b.new_context(viewport={'width':390,'height':844})
+        pg=await ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e))); pg.on('console',lambda m: errs.append('CONSOLE '+m.text) if m.type=='error' else None)
+        await pg.add_init_script(path='/home/claude/serdik-tabletops/dev/test/mockfb.js')
+        await pg.add_init_script(script="if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('mockfb_user','null');}")
+        await pg.goto(U); await pg.wait_for_timeout(2500)
+        print('signed out online=',await pg.evaluate("online"),'gate btn',await pg.evaluate("!!document.querySelector('#gateSlot [data-act=fblogin]')"))
+        await pg.screenshot(path='fb_gate.png')
+        await pg.evaluate("closeModal()")
+        await pg.click('#gateSlot [data-act="fblogin"]'); await pg.wait_for_timeout(3000)
+        print('after login online=',await pg.evaluate("online"),'myId',await pg.evaluate("myId"),await pg.evaluate("$('#acctLine').textContent"))
+        # create table
+        await pg.click('#createBtn'); await pg.wait_for_timeout(1200)
+        gid=await pg.evaluate("cur&&cur.gid"); print('gid',gid,'view',await pg.evaluate("view"))
+        raw=await pg.evaluate(f"JSON.stringify(Object.keys(__FS))"); print('fs keys',raw)
+        print('lobby summary',(await pg.evaluate(f"JSON.stringify(__FS['lobby/{gid}'])"))[:300])
+        await pg.evaluate("""async()=>{await commitOnline(s=>{s.players.push(newPlayer('u_dina','Dina'));});}""")
+        await pg.wait_for_timeout(400)
+        await pg.click('[data-act="start"]'); await pg.wait_for_timeout(1200)
+        print('status',await pg.evaluate("cur.st.status"),'v',await pg.evaluate("cur.st.v"))
+        ops0=await pg.evaluate("JSON.stringify(__FSOPS)")
+        # play moves alternating
+        for i in range(12):
+            t=await pg.evaluate("cur.st.turn"); pid=await pg.evaluate(f"cur.st.players[{t}].id")
+            r=await pg.evaluate(f"""(async()=>{{myId='{pid}';try{{await commitOnline(s=>{{doMove(s,s.turn,botMove(s,s.turn,'normal'));}});return 'ok'}}catch(e){{return 'ERR '+e.message}}finally{{myId='u_new';}}}})()""")
+            if r!='ok':print('move',i,r)
+            await pg.wait_for_timeout(150)
+        await pg.wait_for_timeout(600)
+        print('after moves v',await pg.evaluate("cur.st.v"),'round',await pg.evaluate("cur.st.round"),'ops',ops0,'->',await pg.evaluate("JSON.stringify(__FSOPS)"))
+        print('lobby _lt same?',await pg.evaluate(f"JSON.stringify([__FS['games/{gid}']._lt,__FS['lobby/{gid}'].updatedAt])"))
+        await pg.screenshot(path='fb_table.png')
+        await pg.evaluate("backToLobby()"); await pg.wait_for_timeout(800)
+        print('lobby rows',await pg.evaluate("document.querySelectorAll('#tableList .trow').length"),'lobbyUnsub',await pg.evaluate("!!lobbyUnsub"))
+        await pg.click('#gateSlot [data-act="open"]'); await pg.wait_for_timeout(800)
+        print('reopen view',await pg.evaluate("view"),'st players',await pg.evaluate("cur.st&&cur.st.players.length"),'has decks',await pg.evaluate("!!(cur.st&&cur.st.decks)"))
+        print('presence',(await pg.evaluate("JSON.stringify(__RTDB)"))[:200],'ONLINE',await pg.evaluate("[...ONLINE].join(',')"))
+        await pg.evaluate("backToLobby()"); await pg.wait_for_timeout(300)
+        await pg.click('#profBtn'); await pg.wait_for_timeout(1500); await pg.screenshot(path='fb_prof.png')
+        print('logout btn',await pg.evaluate("!!document.querySelector('#mbox [data-act=fblogout]')"))
+        print('errs',errs)
+        await b.close()
+asyncio.run(main())

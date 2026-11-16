@@ -1,0 +1,25 @@
+import asyncio,json
+from playwright.async_api import async_playwright
+async def main():
+    async with async_playwright() as p:
+        b=await p.chromium.launch(executable_path='/usr/bin/google-chrome')
+        pg=await b.new_page(viewport={'width':1300,'height':900})
+        errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
+        await pg.add_init_script(path='/home/claude/serdik-tabletops/dev/test/mock.js')
+        await pg.goto('file:///home/claude/serdik-tabletops/dev/saudagar-permata.html'); await pg.wait_for_timeout(1500)
+        await pg.click('[data-act="hubnew"][data-g="rapat"]'); await pg.wait_for_timeout(500)
+        await pg.evaluate("""async()=>{const r=db.doc('games/'+cur.gid);const s=(await r.get()).data();s.timer=30;['Dina','Raka','Sari','Bima','Tono'].forEach(n=>s.players.push({id:'u_'+n.toLowerCase(),nick:n}));s.v++;await r.set(s);}""")
+        await pg.wait_for_timeout(400); await pg.click('[data-act="start"]'); await pg.wait_for_timeout(800)
+        await pg.click('#mbox [data-act="close"]')
+        await pg.evaluate("""async()=>{const r=db.doc('games/'+cur.gid);const s=(await r.get()).data();s.turnAt=Date.now()-40000;s.v++;await r.set(s);}""")
+        await pg.wait_for_timeout(6000)
+        print('after propose timeout', await pg.evaluate("JSON.stringify({ph:cur.st.phase,team:cur.st.team,log:cur.st.log.slice(-2).map(l=>l.m)})"))
+        await pg.evaluate("""async()=>{const r=db.doc('games/'+cur.gid);const s=(await r.get()).data();s.turnAt=Date.now()-40000;s.v++;await r.set(s);}""")
+        await pg.wait_for_timeout(6000)
+        print('after vote timeout', await pg.evaluate("JSON.stringify({ph:cur.st.phase,log:cur.st.log.slice(-3).map(l=>l.m)})"))
+        await pg.click('[data-act="rforce"]'); await pg.click('[data-act="rforceok"]'); await pg.wait_for_timeout(800)
+        print('after force', await pg.evaluate("JSON.stringify({ph:cur.st.phase,res:cur.st.res,log:cur.st.log.slice(-2).map(l=>l.m)})"))
+        await pg.evaluate("myId='u_zz';render()"); await pg.wait_for_timeout(200)
+        print('spectator btns', await pg.evaluate("[...document.querySelectorAll('.ract button')].map(b=>b.textContent)"), await pg.evaluate("document.querySelectorAll('.rtag.o').length"))
+        print('errors',errs); await b.close()
+asyncio.run(main())
