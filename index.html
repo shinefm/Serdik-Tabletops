@@ -4,7 +4,7 @@
 <meta name="google" content="notranslate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Serdik Games</title>
+<title>Serdik Tabletop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Fredoka:wght@500;600;700&family=Lilita+One&family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -476,6 +476,13 @@ table.rec .sub{display:block;font-size:11px;color:var(--mute);font-weight:400}
 .guidebox .btn{flex:none}
 @media(max-width:560px){.guidebox{flex-direction:column;align-items:stretch}}
 .hubp{grid-column:1/-1}
+.featgrid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.hubcard.feat{position:relative;padding:18px 16px 16px;border:2px solid var(--gold);background:linear-gradient(160deg,rgba(230,184,76,.20),var(--panel2) 55%);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.hubcard.feat .hi{font-size:44px}.hubcard.feat .hh b{font-size:19px}.hubcard.feat .hd{font-size:14.5px}
+.featb{position:absolute;top:-11px;right:14px;background:linear-gradient(180deg,#f0c55e,#d9a63a);color:#2b1f05;font-size:11.5px;font-weight:800;padding:3px 10px;border-radius:999px;border:1px solid #b5861b;letter-spacing:.3px}
+.hubsep{margin:22px 0 0;padding-top:14px;border-top:1px dashed var(--line)}.hubsep h3{margin:0;font-size:17px;opacity:.85}
+body.light .hubcard.feat{background:linear-gradient(160deg,#fbe7b0,#fbf5e6 60%);border-color:#d9a63a}
+
 .hubgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
 .hubcard{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;background:var(--panel2);border:1px solid var(--line)}
 .hubcard.soon{opacity:.72}.hubcard .hh{display:flex;gap:10px;align-items:center}.hubcard .hi{font-size:32px;line-height:1}
@@ -766,10 +773,10 @@ body.light #turnPill{background:#fff;color:#2a2346}
   <header class="top">
     <div class="brand">
       <span class="brandico" aria-hidden="true">🎲</span>
-      <div><h1>Serdik Games</h1><small>Game papan online · P3MD</small></div>
+      <div><h1>Serdik Tabletop</h1><small>Game papan online · P3MDI</small></div>
     </div>
     <div class="hbtns">
-      <button class="btn sm" id="themeBtn" data-act="theme" aria-label="Ganti tema">☀️ <span class="lbl">Terang</span></button>
+      <button class="btn sm" id="themeBtn" data-act="theme" aria-label="Ganti tema">🌙 <span class="lbl">Gelap</span></button>
       <button class="btn sm" id="histBtn" data-act="history" style="display:none" aria-label="Riwayat">📜 <span class="lbl">Riwayat</span></button>
       <button class="btn sm" id="profBtn" data-act="profile" style="display:none" aria-label="Profil">👤 <span class="lbl">Profil</span></button>
       <button class="btn sm" id="lbBtn" data-act="leaderboard" style="display:none" aria-label="Peringkat">🏆 <span class="lbl">Peringkat</span></button>
@@ -2712,7 +2719,7 @@ function retroArt(id){
   return RART[id]=`<svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice">${RS[c.tier][v](c.b==='x'?'p':c.b,RPAL[c.b])}</svg>`;
 }
 ui.theme='retro';
-try{ui.mode=localStorage.getItem('sp_mode')||'dark';}catch(e){ui.mode='dark';}
+try{ui.mode=localStorage.getItem('sp_mode')||'light';}catch(e){ui.mode='light';}
 function setMode(m){ui.mode=m;try{localStorage.setItem('sp_mode',m);}catch(e){}document.body.classList.toggle('light',m==='light');const b=$('#themeBtn');if(b)b.innerHTML=m==='light'?'🌙 <span class="lbl">Gelap</span>':'☀️ <span class="lbl">Terang</span>';}
 const AN_INK='#1d2440';
 const AN_CHARS=[
@@ -3051,7 +3058,7 @@ function renderLobby(){
     $('#app').innerHTML=`<div id="lobbyShell" class="lobby">
       <div id="gateSlot">${accessGateHTML()}</div>${hubGridHTML()}
       <section class="panel">
-        ${EDITION==='latihan'?`<div class="note" style="margin-bottom:12px">🎯 <b>Versi latihan publik.</b> Main lawan bot, ikuti tutorial, dan simpan game di browser ini. <b>Liga online P3MD</b> (meja online, profil, peringkat) khusus anggota yang diundang.${LEAGUE_URL?` Sudah diundang? <a href="${LEAGUE_URL}" target="_blank" rel="noopener">Buka Liga →</a>`:''}<div style="margin-top:10px"><button class="btn pri sm" data-act="onlineinfo">🌐 Main online bareng teman</button></div></div>`:''}
+        ${EDITION==='latihan'?`<div class="note" style="margin-bottom:12px">🎯 <b>Versi latihan publik.</b> Main lawan bot, ikuti tutorial, dan simpan game di browser ini. <b>Liga online P3MDI</b> (meja online, profil, peringkat) khusus anggota yang diundang.${LEAGUE_URL?` Sudah diundang? <a href="${LEAGUE_URL}" target="_blank" rel="noopener">Buka Liga →</a>`:''}<div style="margin-top:10px"><button class="btn pri sm" data-act="onlineinfo">🌐 Main online bareng teman</button></div></div>`:''}
         <h2 style="font-size:22px">${EDITION==='latihan'?'Mulai latihan':'Buka meja baru'}</h2>
         <div class="hero-gems">${ALL.map(c=>gem(c,26)).join('')}</div>
         <p class="mute" style="margin-top:0;font-size:14px">Kumpulkan permata, beli kartu tambang, pengrajin dan istana, lalu raih dukungan para pahlawan. Yang pertama mencapai <b>${WIN} poin</b> memicu ronde terakhir.</p>
@@ -3931,7 +3938,7 @@ document.addEventListener('click',async e=>{
       openModal(`<h3>⏩ Lanjutkan paksa?</h3><p class="mute" style="font-size:14px">Untuk pemain yang terputus atau tidak merespons. Yang belum masuk dihitung otomatis: usulan tim diisi berurutan, suara dihitung Setuju, kartu proyek dihitung Dukung, tebakan Dalang diacak.</p><div class="mbtns"><button class="btn" data-act="close">Batal</button><button class="btn pri" data-act="rforceok">Lanjutkan</button></div>`);break;
     case 'rforceok':{closeModal();if(ui.busy)return;ui.busy=true;const ph=st.phase,ta=st.turnAt;commitOnline(s=>{if(s.status!=='playing'||s.phase!==ph||s.turnAt!==ta)throw NOOP;hubAct(s,meIdx(s),{type:'timeout',forced:true});}).catch(e=>{if(!e.noop)toast(e.message||'Gagal');}).finally(()=>{ui.busy=false;});break;}
     case 'onlineinfo':openModal(`<h3>🌐 Main online harus login dulu</h3>
-      <p style="font-size:14px;line-height:1.6;margin:0">Meja online (main bareng teman, profil, rekor, peringkat) ada di <b>Liga P3MD</b>, dan hanya bisa dibuka oleh <b>akun Claude yang diundang</b>. Ini aturan platform Claude: pengunjung tanpa login atau lewat link publik tidak bisa tersambung ke meja online.</p>
+      <p style="font-size:14px;line-height:1.6;margin:0">Meja online (main bareng teman, profil, rekor, peringkat) ada di <b>Liga P3MDI</b>, dan hanya bisa dibuka oleh <b>akun Claude yang diundang</b>. Ini aturan platform Claude: pengunjung tanpa login atau lewat link publik tidak bisa tersambung ke meja online.</p>
       <ol style="font-size:14px;line-height:1.6;margin:10px 0 0;padding-left:20px">
         <li>Buat akun Claude di <b>claude.ai</b> pakai email kamu.</li>
         <li>Kirim email itu ke admin Liga untuk diundang (kuota maksimal 50 orang).</li>
@@ -4285,7 +4292,7 @@ async function openProfile(){
     openModal(`${saveCardHTML(sv,'profile')}<div class="row" style="gap:14px;flex-wrap:nowrap;align-items:center"><div style="width:64px;height:64px;border-radius:50%;background:var(--panel2);border:2px dashed var(--line);display:grid;place-items:center;font-size:28px;flex:none">👤</div>
       <div><h3 style="margin:0">Tamu</h3><div class="bd">Belum terhubung ke profil</div></div></div>
       <p style="font-size:14px;line-height:1.55;margin:14px 0 0">Seperti akun tamu di Pokémon Showdown: kamu bisa <b>main lawan bot</b> dan <b>menonton</b> meja online, tapi hasilnya <b>tidak dicatat</b>, jadi tidak ada riwayat, poin, atau peringkat.</p>
-      <p style="font-size:14px;line-height:1.55;margin:10px 0 0">${EDITION==='latihan'?'Ini <b>versi latihan publik</b>. Liga online P3MD (profil, riwayat, peringkat) khusus anggota yang diundang lewat email.':'Untuk punya profil, main online, dan masuk peringkat, <b>masuk dengan akun Google</b>. Gratis dan tanpa undangan.'}</p>
+      <p style="font-size:14px;line-height:1.55;margin:10px 0 0">${EDITION==='latihan'?'Ini <b>versi latihan publik</b>. Liga online P3MDI (profil, riwayat, peringkat) khusus anggota yang diundang lewat email.':'Untuk punya profil, main online, dan masuk peringkat, <b>masuk dengan akun Google</b>. Gratis dan tanpa undangan.'}</p>
       <div class="mbtns">${EDITION==='latihan'?'':'<button class="btn" data-act="leaderboard">🏆 Lihat peringkat</button>'}<button class="btn pri" data-act="close">Oke</button></div>`);
     return;
   }
@@ -4507,7 +4514,7 @@ document.addEventListener('click',e=>{
 
 /* ================= HUB · MENU GAME & RAPAT RAHASIA DIREKSI ================= */
 const HUB_INFO={
-  permata:{icon:'💎',name:'Saudagar Permata',ply:'2–4 pemain · Duel 2',dur:'20–40 menit',kind:'Strategi ekonomi',desc:'Kumpulkan permata, beli kartu tambang sampai istana, dan raih dukungan pahlawan nasional. Bisa lawan bot.',mk:[['MK02','investasi bertahap']]},
+  permata:{icon:'💎',name:'Saudagar Permata',ply:'2–4 pemain · Duel 2',dur:'20–40 menit',kind:'Strategi ekonomi · terinspirasi Splendor',desc:'Kumpulkan permata, beli kartu tambang sampai istana, dan raih dukungan pahlawan nasional. Bisa lawan bot.',mk:[['MK02','investasi bertahap']]},
   rapat:{icon:'🏛️',name:'Rapat Rahasia Direksi',ply:'5–10 pemain',dur:'20–30 menit',kind:'Deduksi sosial · mirip Avalon',desc:'Direksi menjalankan 5 proyek dari kasus kuliah, tapi diam-diam ada Oknum yang ingin proyeknya gagal. Siapa yang bisa dipercaya?',mk:[['MK01','power & politics'],['MK05','keputusan kelompok']]},
   pemukim:{icon:'🏝️',name:'Pemukim Nusantara',ply:'3–4 pemain · bisa lawan bot',dur:'45–90 menit',kind:'Strategi & dagang · aturan Catan',desc:'Bangun pemukiman, jalan, dan kota di pulau acak. Hasil bumi keluar sesuai lemparan dadu. Berdagang, hindari perampok, dan raih 10 poin duluan.',mk:[['MK02','investasi & ROI'],['MK04','rantai pasok']]},
   werewolf:{icon:'🐺',name:'Werewolf',ply:'Satu Malam 3–10 · Klasik 6–20',dur:'10–60 menit',kind:'Deduksi sosial · 2 mode',desc:'<b>Satu Malam</b>: cepat, kartu peran bisa tertukar diam-diam, voting sekali. <b>Klasik</b>: banyak malam & siang untuk grup besar (sampai 20 orang), aplikasi jadi moderatornya.',mk:[['MK05','keputusan dengan info tak lengkap']]},
@@ -4515,6 +4522,7 @@ const HUB_INFO={
   sandi:{icon:'🕵️',name:'Sandi Syndicate',ply:'4–8 pemain · 2 tim',dur:'15–20 menit',kind:'Tebak kata · mirip Codenames',desc:'Ketua tim memberi petunjuk satu kata untuk menebak istilah materi MK di papan 5×5.',mk:[['MK01–06','istilah materi']],soon:true}
 };
 function mkChip(mk,t){const c=(MK_INFO[mk]||{}).c||'#8a7fc0';return `<span class="mkchip" style="--mk:${c}">${esc(mk)}${t?' · '+esc(t):''}</span>`;}
+const FEAT=['permata','jualan'];
 function hubGridHTML(){
   const card=k=>{const g=HUB_INFO[k];let b='';
     if(k==='permata')b=`${EDITION!=='latihan'?'<button class="btn pri sm" data-act="hubnew" data-g="klasik">Buat meja</button>':''}<button class="btn sm" data-act="localSetup">🤖 Lawan bot</button><button class="btn sm" data-act="tutorial" data-w="klasik">🎬 Tutorial</button>`;
@@ -4524,11 +4532,13 @@ function hubGridHTML(){
       :k==='werewolf'?`<button class="btn pri sm" data-act="hubnew" data-g="werewolf">Meja Satu Malam</button><button class="btn pri sm" data-act="hubnew" data-g="wwk">Meja Klasik</button><button class="btn sm" data-act="tutorial" data-w="werewolf">📖 Cara main</button>`
       :`<button class="btn pri sm" data-act="hubnew" data-g="${k}">Buat meja</button><button class="btn sm" data-act="tutorial" data-w="${k}">📖 Cara main</button>`;
     else b='<span class="pill soonpill">Segera hadir</span>';
-    return `<div class="hubcard ${g.soon?'soon':''}"><div class="hh"><span class="hi">${g.icon}</span><div><b>${g.name}</b><div class="bd">${g.kind}</div></div></div>
+    return `<div class="hubcard ${g.soon?'soon':''} ${FEAT.includes(k)?'feat':''}">${FEAT.includes(k)?'<span class="featb">⭐ Unggulan</span>':''}<div class="hh"><span class="hi">${g.icon}</span><div><b>${g.name}</b><div class="bd">${g.kind}</div></div></div>
       <div class="hmeta"><span>👥 ${g.ply}</span><span>⏱ ${g.dur}</span></div><p class="hd">${g.desc}</p>
       <div class="hmk">${g.mk.map(x=>mkChip(x[0],x[1])).join('')}</div><div class="row hbt">${b}</div></div>`;};
-  return `<section class="panel hubp"><div class="row" style="justify-content:space-between"><h2 style="font-size:22px">🎲 Pilih permainan</h2><span class="bd">Game papan online untuk syndicate P3MD</span></div>
-    <div class="hubgrid">${['permata','jualan','pemukim','rapat','werewolf','sandi'].map(card).join('')}</div></section>`;
+  return `<section class="panel hubp"><div class="row" style="justify-content:space-between"><h2 style="font-size:22px">⭐ Game unggulan</h2><span class="bd">Game papan online untuk syndicate P3MDI</span></div>
+    <div class="hubgrid featgrid">${FEAT.map(card).join('')}</div>
+    <div class="hubsep"><h3>🎲 Game lainnya</h3></div>
+    <div class="hubgrid">${['pemukim','rapat','werewolf','sandi'].map(card).join('')}</div></section>`;
 }
 const VLAB={jualan:'🛍️ Jualan Yuk',klasik:'💎 Klasik',duel:'⚔️ Duel',pemukim:'🏝️ Pemukim',rapat:'🏛️ Rapat Rahasia',werewolf:'🐺 Werewolf',wwk:'🐺 WW Klasik',sandi:'🕵️ Sandi'};
 function vOf(r){return ['duel','sandi','rapat','werewolf','pemukim','wwk','jualan'].includes(r&&r.variant)?r.variant:'klasik';}
@@ -5294,14 +5304,14 @@ function accessGateHTML(){
       ${app?`<div class="gwarn">⚠️ Kamu membuka link dari <b>${app}</b>. Browser bawaan ${app} tidak bisa login ke Claude. ${chromeIntent()?`<a class="btn pri" style="margin:6px 0;display:inline-block;text-decoration:none" href="${esc(chromeIntent())}">🌐 Buka di Chrome</a><br>Kalau tombol itu tidak jalan: `:''}ketuk <b>⋮</b> atau ikon kompas di pojok, lalu pilih <b>Buka di Chrome</b> (Android) atau <b>Buka di Safari</b> (iPhone).</div>`:''}
       <ol class="gsteps"><li>Buka link ini di <b>Chrome</b> atau <b>Safari</b>${app?'':' (bukan dari dalam WhatsApp)'}.</li>
         <li>Login ke <b>claude.ai</b>. Bisa pakai <b>“Lanjutkan dengan Google”</b>, dan belum punya akun? Daftar gratis.</li>
-        <li>Buka lagi link Serdik Games / link meja dari temanmu.</li>
+        <li>Buka lagi link Serdik Tabletop / link meja dari temanmu.</li>
         <li>Pakai <b>email yang sudah diundang</b> tuan rumah. Kalau belum diundang, halaman ini akan menampilkan emailmu untuk dikirim ke mereka.</li></ol>
       <div class="row" style="gap:8px"><a class="btn pri" href="${esc(pageLink())}" target="_blank" rel="noopener">🔑 Login ke Claude</a><button class="btn" data-act="gatecopy">🔗 Salin link halaman ini</button></div>
       <p class="bd" style="margin:8px 0 0">Belum sempat login? Kamu tetap bisa main <b>🤖 lawan bot</b> di bawah, tapi hasilnya tidak tercatat.</p></section>`;
   }
   if(online==='on'&&canWrite===false){
     const em=ui.email||'';
-    const wa='https://wa.me/?text='+encodeURIComponent(`Halo, tolong undang email saya${em?' '+em:''} ke Serdik Games (Share → Invite people by email → akses "Commenter") supaya saya bisa main online 🙏 ${LEAGUE_URL||''}`);
+    const wa='https://wa.me/?text='+encodeURIComponent(`Halo, tolong undang email saya${em?' '+em:''} ke Serdik Tabletop (Share → Invite people by email → akses "Commenter") supaya saya bisa main online 🙏 ${LEAGUE_URL||''}`);
     return `<section class="panel gate"><div class="gh"><span class="gi">✉️</span><div><h2>Akunmu belum diundang</h2><p class="bd" style="margin:2px 0 0">Kamu sudah login, tapi akunmu baru bisa <b>melihat</b>. Supaya bisa duduk di meja, tuan rumah perlu mengundang emailmu lewat tombol <b>Share</b> di claude.ai dengan akses <b>Commenter</b>.</p></div></div>
       ${em?`<div class="gmail"><span class="bd">Emailmu:</span> <b>${esc(em)}</b></div>`:''}
       <div class="row" style="gap:8px">${em?'<button class="btn" data-act="gatemail">📋 Salin email</button>':''}<a class="btn wa" href="${esc(wa)}" target="_blank" rel="noopener">${WA_ICON} Kirim ke tuan rumah</a></div>
@@ -5314,7 +5324,7 @@ function openLoginPop(){
   openModal(`<div style="text-align:center"><div style="font-size:52px;line-height:1.1">🔐</div><h3 style="font-size:22px;margin:6px 0 4px">Masuk dulu, yuk!</h3>
     <p style="font-size:14.5px;line-height:1.55;margin:0 0 10px">Supaya bisa <b>main online bareng teman</b>, punya profil, rekor, dan peringkat, kamu perlu login ke <b>Claude</b>. Bisa langsung pakai akun <b>Google</b>, gratis.</p></div>
     ${app?`<div class="gwarn">⚠️ Kamu membuka dari <b>${app}</b>. Login Claude tidak bisa di browser bawaan ${app}. ${chromeIntent()?`<a class="btn pri" style="margin:6px 0;display:inline-block;text-decoration:none" href="${esc(chromeIntent())}">🌐 Buka di Chrome</a><br>Atau `:''}ketuk <b>⋮</b> / ikon kompas lalu pilih <b>Buka di Chrome/Safari</b>.</div>`:''}
-    <ol class="gsteps" style="margin-bottom:6px"><li>Ketuk tombol <b>Masuk</b> milik Claude di bagian bawah layar (atau <b>🔑 Login ke Claude</b> di bawah), lalu pilih <b>Continue with Google</b>.</li><li>Setelah login kamu dibawa kembali ke halaman ini. Kalau malah ke beranda Claude, buka lagi link Serdik Games.</li></ol>
+    <ol class="gsteps" style="margin-bottom:6px"><li>Ketuk tombol <b>Masuk</b> milik Claude di bagian bawah layar (atau <b>🔑 Login ke Claude</b> di bawah), lalu pilih <b>Continue with Google</b>.</li><li>Setelah login kamu dibawa kembali ke halaman ini. Kalau malah ke beranda Claude, buka lagi link Serdik Tabletop.</li></ol>
     <div class="mbtns" style="justify-content:center"><button class="btn" data-act="close">Nanti saja, main lawan bot</button><a class="btn pri" href="${esc(pageLink())}" target="_blank" rel="noopener" style="text-decoration:none">🔑 Login ke Claude</a></div>`);
 }
 
@@ -5685,7 +5695,7 @@ async function createTable(){
     return;}
   ui.busy=true;
   try{
-    const gid=newId(), name=($('#tblIn')&&$('#tblIn').value.trim())||('Meja '+(ui.nick||'P3MD'));
+    const gid=newId(), name=($('#tblIn')&&$('#tblIn').value.trim())||('Meja '+(ui.nick||'P3MDI'));
     const md=($('#modeIn')&&$('#modeIn').value)||'klasik';
     const tmr=+(($('#timerIn')&&$('#timerIn').value)||180); ui.lastTimer=tmr;
     const st=md==='jualan'?{name,host:myId,createdAt:Date.now(),updatedAt:Date.now(),status:'lobby',game:'jualan',mode:'jualan',timer:tmr,nteams:2,split:false,botLevel:'normal',players:[{id:myId,nick:ui.nick||'',team:0}],v:1}
@@ -5811,7 +5821,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-1';
+const BUILD_TAG='fb-2';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){

@@ -1,4 +1,4 @@
-/* Serdik Games — adaptor Firebase.
+/* Serdik Tabletop — adaptor Firebase.
    Meniru API window.claude.use('db'|'user'|'room') yang dipakai game, di atas Firebase compat SDK.
    - Dokumen disimpan sebagai JSON di field `_j` (aman dari undefined & array bersarang),
      ditambah beberapa field indeks untuk query (createdAt, endedAt, host, ids, ...).

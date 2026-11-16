@@ -1,6 +1,6 @@
-# Serdik Games
+# Serdik Tabletop
 
-Game papan online untuk P3MD. Halaman statis (index.html) + Firebase (login Google, Firestore, Realtime Database).
+Game papan online untuk P3MDI. Halaman statis (index.html) + Firebase (login Google, Firestore, Realtime Database).
 
 - `index.html` — game
 - `shim.js` — penghubung game ke Firebase
