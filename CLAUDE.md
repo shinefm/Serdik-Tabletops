@@ -23,7 +23,7 @@ bash dev/fbapp/mktest.sh          # salinan tes dengan SDK palsu -> dev/fbapp/te
 cd dev/test_fb && python3 smoke.py && python3 jy.py && python3 jyon.py
 ```
 
-Tes memakai path absolut `/home/claude/serdik-tabletops/dev/...` dan Chrome di `/usr/bin/google-chrome`. Kalau repo di-clone ke tempat lain, ganti path itu dulu. Tambahkan nomor `BUILD_TAG` (di `patch_fb.py`, sekarang `fb-9`) setiap rilis supaya versi terlihat di baris akun lobi.
+Tes memakai path absolut `/home/claude/serdik-tabletops/dev/...` dan Chrome di `/usr/bin/google-chrome`. Kalau repo di-clone ke tempat lain, ganti path itu dulu. Tambahkan nomor `BUILD_TAG` (di `patch_fb.py`, sekarang `fb-10`) setiap rilis supaya versi terlihat di baris akun lobi.
 
 Setelah build dan tes lolos: commit, lalu push ke `main`. Kalau perubahannya besar, pakai branch dulu supaya Vercel membuat preview.
 
