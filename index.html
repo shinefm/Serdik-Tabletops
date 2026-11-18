@@ -797,6 +797,21 @@ body.light #turnPill.tmrwarn{background:#fff1e8;color:#7a2e08;border-color:#e869
 .sdpill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:#888}
 .sdpill.c-r{background:#d9534f}.sdpill.c-b{background:#3d7be0}.sdpill.c-n{background:#cdbd96;color:#3b3220}.sdpill.c-x{background:#1d1a24}
 .sdclues{display:flex;flex-wrap:wrap;gap:4px}
+/* --- Ekspansi Kota --- */
+.kotas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.kota{position:relative;border-radius:14px;padding:8px 8px 6px;cursor:pointer;color:#f4efe3;background:linear-gradient(160deg,#2b5d69,#1b3a44);border:2px solid #3f7f8c;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:92px;display:flex;flex-direction:column;gap:6px}
+.kota .kn{font:700 15px/1.15 Fraunces,serif}
+.kota .kr{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.kota .hsq{width:22px;height:22px;font-size:12.5px}
+.kreq{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 6px;border-radius:7px;font:800 12px/1 system-ui,sans-serif;background:#f4efe3;color:#1b3a44;white-space:nowrap}
+.kreq.kpts{background:#f0c55e;color:#3b2a05}
+.kota .ok{outline:2px solid #6fe08a;outline-offset:1px}.kota .no{opacity:.6}
+.kota .ks{font-size:11.5px;font-weight:700;min-height:14px}
+.kota.ready{border-color:#6fe08a;box-shadow:0 0 0 2px #6fe08a88,0 3px 10px rgba(0,0,0,.18)}
+.kota.taken{background:linear-gradient(160deg,#5b5340,#3a3428);border-color:#b98f2c}
+.kota.taken .kr{opacity:.55}
+.krow{font-size:14.5px;margin:4px 0}
+@media(max-width:560px){.kotas{gap:5px;margin-bottom:6px}.kota{padding:6px 5px 5px;min-height:80px;border-radius:11px}.kota .kn{font-size:12.5px}.kreq{height:19px;font-size:10.5px;padding:0 4px}.kota .hsq{width:19px;height:19px;font-size:11px}.kota .ks{font-size:10px}}
 .gbtn{display:inline-flex;align-items:center;gap:8px;background:#fff!important;color:#1f1f1f!important;border:1px solid #dadce0!important}
 </style>
 </head>
@@ -910,6 +925,97 @@ function shortfall(p,card){
   for(const c of COLORS){let need=Math.max(0,(card.cost[c]||0)-b[c]-p.t[c]);const g=Math.min(gold,need);gold-=g;need-=g;if(need>0)out[c]=need;}
   return out;
 }
+/* ================= SAUDAGAR PERMATA · EKSPANSI KOTA ================= */
+/* Pahlawan diganti 3 kartu Kota. Kota direbut kalau poin & kartu bonus memenuhi syarat.
+   Merebut kota pertama memicu ronde terakhir; yang punya kota dengan poin terbanyak menang. */
+const KOTA={
+  jkt:{name:'Jakarta',pts:16,need:{}},
+  sby:{name:'Surabaya',pts:14,need:{},same:4},
+  plg:{name:'Palembang',pts:13,need:{},same:5},
+  smg:{name:'Semarang',pts:13,need:{},each:1},
+  bdg:{name:'Bandung',pts:12,need:{g:3,u:3}},
+  mdn:{name:'Medan',pts:12,need:{r:4,k:2}},
+  mks:{name:'Makassar',pts:12,need:{u:4,w:2}},
+  bpn:{name:'Balikpapan',pts:12,need:{k:4,g:2}},
+  yog:{name:'Yogyakarta',pts:11,need:{w:3,g:3,r:2}},
+  dps:{name:'Denpasar',pts:11,need:{k:3,r:3,u:2}}
+};
+function kotaReq(id,p){
+  const K=KOTA[id], b=bonusOf(p), pts=ptsOf(p), items=[];
+  items.push({t:'pts',n:K.pts,ok:pts>=K.pts,have:pts});
+  for(const c in K.need)items.push({t:'c',c,n:K.need[c],ok:b[c]>=K.need[c],have:b[c]});
+  if(K.same){const mx=Math.max(...COLORS.map(c=>b[c]));items.push({t:'same',n:K.same,ok:mx>=K.same,have:mx});}
+  if(K.each){const k=COLORS.filter(c=>b[c]>=K.each).length;items.push({t:'each',n:5,ok:k>=5,have:k});}
+  return items;
+}
+function kotaOk(id,p){return kotaReq(id,p).every(x=>x.ok);}
+function kotaOwner(st,id){return (st.kotaBy||{})[id];}
+function kotaStart(st){st.patrons=[];st.cities=shuffle(Object.keys(KOTA)).slice(0,3);st.kotaBy={};}
+function kotaCheck(st,pi,p){
+  if(p.kota)return;
+  const ok=st.cities.filter(id=>kotaOwner(st,id)==null&&kotaOk(id,p)).sort((a,b)=>KOTA[b].pts-KOTA[a].pts);
+  if(!ok.length)return;
+  const id=ok[0]; p.kota=id; st.kotaBy[id]=pi;
+  st.log.push({p:pi,m:'🏙️ merebut Kota '+KOTA[id].name+'!'});
+  if(!st.endTriggered){st.endTriggered=true;st.log.push({p:-1,m:'Kota pertama sudah direbut: ini ronde terakhir!'});}
+}
+function kotaRanking(st){
+  const r=st.players.map((p,i)=>({i,pts:ptsOf(p),n:p.cards.length,k:p.kota?1:0})).sort((a,b)=>b.k-a.k||b.pts-a.pts||a.n-b.n);
+  if(st.status==='ended'&&r[0]&&r[0].k){const w=st.players[r[0].i];st.winBy='merebut Kota '+KOTA[w.kota].name;}
+  return r;
+}
+/* bantuan bot: seberapa kartu warna ini mendekatkan ke kota yang masih kosong */
+function kotaHelp(st,p,b,card){
+  if(p.kota)return 0;
+  const pts=ptsOf(p);
+  return st.cities.reduce((s,id)=>{if(kotaOwner(st,id)!=null)return s;const K=KOTA[id], near=pts>=K.pts-5?1.4:1;let v=0;
+    if((K.need[card.b]||0)>b[card.b])v+=1;
+    if(K.same){const mx=Math.max(...COLORS.map(c=>b[c]));if(b[card.b]===mx&&mx<K.same)v+=0.8;}
+    if(K.each&&b[card.b]<K.each)v+=1;
+    return s+v*near;},0);
+}
+/* ---------- tampilan ---------- */
+function kotaTile(st,id,p){
+  const K=KOTA[id], own=kotaOwner(st,id), req=p?kotaReq(id,p):null;
+  const mark=i=>req?(req[i].ok?' ok':' no'):'';
+  let k=0;
+  const items=[`<span class="kreq kpts${mark(k++)}" title="Minimal ${K.pts} poin">⭐${K.pts}</span>`];
+  for(const c in K.need)items.push(`<span class="hsq c-${c}${mark(k++)}" title="${K.need[c]} kartu ${CNAME[c]}">${K.need[c]}</span>`);
+  if(K.same)items.push(`<span class="kreq ksame${mark(k++)}" title="${K.same} kartu dari satu warna apa pun">${K.same}× 1 warna</span>`);
+  if(K.each)items.push(`<span class="kreq ksame${mark(k++)}" title="Minimal 1 kartu dari tiap warna">1 tiap warna</span>`);
+  const ready=req&&own==null&&!p.kota&&req.every(x=>x.ok);
+  return `<div class="kota ${own!=null?'taken':''} ${ready?'ready':''}" data-act="kotainfo" data-id="${id}">
+    <div class="kn">🏙️ ${esc(K.name)}</div><div class="kr">${items.join('')}</div>
+    <div class="ks">${own!=null?`🏁 ${esc(nm(st,own))}`:ready?'✅ Siap direbut':''}</div></div>`;
+}
+function kotaPanel(st){
+  const seat=actor(st), p=seat>=0?st.players[seat]:null;
+  return `<div class="kotas">${st.cities.map(id=>kotaTile(st,id,p)).join('')}</div>`;
+}
+function patronsOrKota(st){
+  if(st.mode==='kota')return kotaPanel(st);
+  return `<div class="patrons">${st.patrons.map(patronHTML).join('')||'<span class="mute">Semua pahlawan sudah memberi dukungan.</span>'}</div>`;
+}
+function kotaInfo(id){
+  const st=cur.st, K=KOTA[id], seat=actor(st), p=seat>=0?st.players[seat]:null, own=kotaOwner(st,id);
+  const lbl=x=>x.t==='pts'?`⭐ Minimal ${x.n} poin`:x.t==='c'?`${x.n} kartu ${wn(x.c)}`:x.t==='same'?`${x.n} kartu dari satu warna apa pun`:'Minimal 1 kartu dari tiap warna (5 warna)';
+  const rows=(p?kotaReq(id,p):kotaReq(id,{cards:[],pat:[]})).map(x=>`<div class="krow">${p?(x.ok?'✅':'⬜'):'•'} ${lbl(x)}${p?` <span class="bd">(kamu: ${x.t==='each'?x.have+' warna':x.have})</span>`:''}</div>`).join('');
+  openModal(`<h3>🏙️ Kota ${esc(K.name)}</h3>
+    <p class="bd" style="margin:0 0 8px">${own!=null?`Sudah direbut ${esc(nm(st,own))}.`:'Kota direbut otomatis di akhir giliran saat semua syarat terpenuhi. Kartu bonus = kartu yang sudah kamu beli.'}</p>
+    ${rows}<div class="mbtns"><button class="btn pri" data-act="close">Tutup</button></div>`);
+}
+function kotaRules(){
+  return `<h3>🏙️ Saudagar Permata · Ekspansi Kota (2–4 pemain)</h3>
+  <p>Cara main sama dengan <b>Klasik</b> (ambil permata, beli kartu, cadangkan + Emas, maksimal 10 token), dengan dua perbedaan:</p>
+  <ul>
+    <li><b>Tidak ada pahlawan.</b> Di tengah meja ada <b>3 kartu Kota</b>. Tiap kota punya syarat: minimal sekian <b>⭐ poin</b> dan sejumlah <b>kartu bonus</b> warna tertentu, misalnya “⭐12 + 3 Zamrud + 3 Safir”. Ada juga syarat “4× 1 warna” (4 kartu dari satu warna apa pun) dan “1 tiap warna”.</li>
+    <li><b>Tidak ada target 15 poin.</b> Di akhir giliranmu, kalau semua syarat sebuah kota terpenuhi, kamu otomatis <b>merebut kota itu</b>. Kalau beberapa terpenuhi sekaligus, kamu mendapat kota dengan syarat poin tertinggi. Tiap pemain hanya bisa punya satu kota, dan tiap kota hanya bisa direbut satu orang.</li>
+    <li><b>Ronde terakhir.</b> Kota pertama yang direbut memicu ronde terakhir, sampai giliran kembali ke pemain pertama. Pemain lain masih bisa merebut kota yang tersisa.</li>
+    <li><b>Pemenang.</b> Hanya pemain yang punya kota yang bisa menang. Kalau lebih dari satu, yang poinnya tertinggi menang; kalau seri, kartu lebih sedikit menang.</li>
+  </ul>
+  <p><b>Tips:</b> ketuk kartu kota untuk melihat syarat yang sudah dan belum kamu penuhi. Rencanakan warna kartu sejak awal, karena poin saja tidak cukup.</p>`;
+}
+
 function startGame(st){
   const n=st.players.length; if(n<2)fail('Minimal 2 pemain');
   const base={2:4,3:5,4:7}[n];
@@ -917,6 +1023,7 @@ function startGame(st){
   st.decks={}; st.market={};
   for(const t of [1,2,3]){const d=shuffle([...TIER_IDS[t]]);st.market['t'+t]=[d.pop(),d.pop(),d.pop(),d.pop()];st.decks['t'+t]=d;}
   st.patrons=shuffle(Object.keys(PAT)).slice(0,n+1);
+  if(st.mode==='kota')kotaStart(st);
   st.players=st.players.map(p=>Object.assign(newPlayer(p.id,p.nick),p.bot?{bot:true}:{}));
   st.turn=0; st.round=1; st.endTriggered=false; st.status='playing';
   st.log=[{p:-1,m:'Permainan dimulai. Semoga dagangannya laris!'}]; st.turnAt=Date.now();
@@ -970,9 +1077,10 @@ function doMove0(st,pi,mv){
   const b=bonusOf(p);
   const k=st.patrons.findIndex(id=>{const nd=PAT[id].need;return Object.keys(nd).every(c=>b[c]>=nd[c]);});
   if(k>=0){const id=st.patrons.splice(k,1)[0];p.pat.push(id);st.log.push({p:pi,m:'mendapat dukungan '+PAT[id].name+' (+3 poin)'});}
-  if(!st.endTriggered&&ptsOf(p)>=WIN){st.endTriggered=true;st.log.push({p:pi,m:'mencapai '+WIN+' poin — ini ronde terakhir!'});}
+  if(st.mode==='kota')kotaCheck(st,pi,p);
+  else if(!st.endTriggered&&ptsOf(p)>=WIN){st.endTriggered=true;st.log.push({p:pi,m:'mencapai '+WIN+' poin — ini ronde terakhir!'});}
   st.turn=(pi+1)%st.players.length;
-  if(st.turn===0){ if(st.endTriggered){st.status='ended';st.log.push({p:-1,m:'Permainan selesai.'});} else st.round++; }
+  if(st.turn===0){ if(st.endTriggered){st.status='ended';st.log.push({p:-1,m:'Permainan selesai.'});if(st.mode==='kota')kotaRanking(st);} else st.round++; }
   st.last={p:pi,m:st.log.slice(logStart).filter(l=>l.p===pi).map(l=>l.m)};
   if(st.log.length>60)st.log=st.log.slice(-60);
 }
@@ -987,7 +1095,7 @@ function botMove(st,pi,level,P){
   for(const t of [1,2,3])st.market['t'+t].forEach((id,slot)=>{if(id)cands.push({id,src:{tier:t,slot}});});
   p.res.forEach((id,k)=>cands.push({id,src:{res:k}}));
   const needOf=card=>{const n={};let tot=0;for(const c of COL){const x=Math.max(0,(card.cost[c]||0)-b[c]-p.t[c]);n[c]=x;tot+=x;}return {n,eff:Math.max(0,tot-p.t.y)};};
-  const help=card=>st.patrons.reduce((s,id)=>{const nd=PAT[id].need[card.b]||0;return s+(nd>b[card.b]?1:0);},0);
+  const help=card=>st.mode==='kota'?kotaHelp(st,p,b,card):st.patrons.reduce((s,id)=>{const nd=PAT[id].need[card.b]||0;return s+(nd>b[card.b]?1:0);},0);
   const opts=[];
   // buy
   const buys=cands.filter(x=>payFor(p,CARDS[x.id]));
@@ -1038,6 +1146,7 @@ function botMove(st,pi,level,P){
 }
 function ranking(st){
   if(st.mode==='duel'&&st.winner!=null)return [st.winner,1-st.winner].map(i=>({i,pts:ptsOf(st.players[i]),n:st.players[i].cards.length}));
+  if(st.mode==='kota')return kotaRanking(st);
   return st.players.map((p,i)=>({i,pts:ptsOf(p),n:p.cards.length})).sort((a,b)=>b.pts-a.pts||a.n-b.n);
 }
 /* ---------- MOVE GENERATION / FEATURES / HARD BOT / LEARNING ---------- */
@@ -1161,6 +1270,7 @@ function rollout(st,pi,plies,seed){
 /* Sulit: kebijakan ahli sebagai langkah dasar; beberapa alternatif (langkah bot lama, saran model dari replay pemain)
    dibandingkan lewat simulasi beberapa ronde ke depan dengan acakan yang sama, dan hanya dipakai bila jelas lebih baik. */
 function hardBotMove(st,pi,model,opt){
+  if(st.mode==='kota')return botMove(st,pi,'hard');
   opt=opt||{}; const R=opt.r||4, plies=(opt.depth||8)*st.players.length, margin=opt.margin==null?1.0:opt.margin;
   const base=expertMove(st,pi);
   const learned=model&&model.w&&(model.n|0)>=150;
@@ -3121,7 +3231,7 @@ function renderLobby(){
         <div class="row" style="align-items:flex-end">
           <label class="field">Nama panggilanmu (opsional)<input id="nickIn" maxlength="20" placeholder="mis. Farhan"></label>
           <label class="field" ${EDITION==='latihan'?'style="display:none"':''}>Nama meja<input id="tblIn" maxlength="30" placeholder="Meja Serdik"></label>
-          <label class="field" ${EDITION==='latihan'?'style="display:none"':''}>Permainan<select id="modeIn"><option value="klasik">💎 Permata Klasik (2–4)</option><option value="duel">⚔️ Permata Duel (2)</option><option value="rapat">🏛️ Rapat Rahasia (5–10)</option><option value="werewolf">🐺 Werewolf Satu Malam (3–10)</option><option value="wwk">🐺 Werewolf Klasik (6–20)</option><option value="pemukim">🏝️ Pemukim Nusantara (3–4)</option><option value="jualan">🛍️ Jualan Yuk (2–4 tim)</option><option value="sandi">🕵️ Sandi Syndicate (4–8)</option></select></label>
+          <label class="field" ${EDITION==='latihan'?'style="display:none"':''}>Permainan<select id="modeIn"><option value="klasik">💎 Permata Klasik (2–4)</option><option value="duel">⚔️ Permata Duel (2)</option><option value="kota">🏙️ Permata Ekspansi Kota (2–4)</option><option value="rapat">🏛️ Rapat Rahasia (5–10)</option><option value="werewolf">🐺 Werewolf Satu Malam (3–10)</option><option value="wwk">🐺 Werewolf Klasik (6–20)</option><option value="pemukim">🏝️ Pemukim Nusantara (3–4)</option><option value="jualan">🛍️ Jualan Yuk (2–4 tim)</option><option value="sandi">🕵️ Sandi Syndicate (4–8)</option></select></label>
           <label class="field" ${EDITION==='latihan'?'style="display:none"':''}>⏱ Waktu per giliran<select id="timerIn">${timerOptions(ui.lastTimer!=null?ui.lastTimer:180)}</select></label>
         </div>
         <div class="row" style="margin-top:12px">
@@ -3162,7 +3272,7 @@ function renderLobby(){
     const lbl={lobby:'Menunggu',playing:'Berjalan',ended:'Selesai'}[g.status]||g.status;
     const names=(g.players||[]).map((p,i)=>(p.bot?'🤖':'')+esc(nm(st,i))).join(', ')||'—';
     const seated=myId&&(g.players||[]).some(p=>p.id===myId);
-    return `<div class="trow"><div style="min-width:0"><b>${esc(g.name||'Meja')}</b>${isHubGame(g)?`<span class="pill playing" style="background:#1d3b66;color:#dbe8ff">${GAMES[g.game].icon} ${GAMES[g.game].name}</span>`:''}${g.mode==='duel'?'<span class="pill playing" style="background:#5a2a86;color:#f1e1ff">⚔️ Duel</span>':''}<span class="pill ${esc(g.status)}">${lbl}</span>
+    return `<div class="trow"><div style="min-width:0"><b>${esc(g.name||'Meja')}</b>${isHubGame(g)?`<span class="pill playing" style="background:#1d3b66;color:#dbe8ff">${GAMES[g.game].icon} ${GAMES[g.game].name}</span>`:''}${g.mode==='duel'?'<span class="pill playing" style="background:#5a2a86;color:#f1e1ff">⚔️ Duel</span>':g.mode==='kota'?'<span class="pill playing" style="background:#1f5f6b;color:#dff7fb">🏙️ Kota</span>':''}<span class="pill ${esc(g.status)}">${lbl}</span>
       <div class="mute" style="font-size:13px;margin-top:3px">${(g.players||[]).length}/${(GAMES[gameOf(g)]||{max:4}).max} · ${g.timer?'⏱ '+timerLabel(g.timer)+' · ':''}${names}</div></div>
       <div class="row" style="gap:6px;flex-wrap:nowrap;flex:none">${g.status==='lobby'?`<a class="btn sm wa icon" href="${esc(waHref(g,g._id))}" target="_blank" rel="noopener" aria-label="Bagikan meja ke WhatsApp" title="Bagikan ke WhatsApp">${WA_ICON}</a><button class="btn sm icon" data-act="copylink" data-g="${esc(g._id)}" aria-label="Salin link meja" title="Salin link meja">🔗</button>`:''}
       ${(g.host===myId||isOwnerFlag)&&canWrite!==false?`<button class="btn sm danger" data-act="lobdel" data-g="${esc(g._id)}" data-n="${esc(g.name||'Meja')}" aria-label="Hapus meja ${esc(g.name||'')}" title="Hapus meja">🗑</button>`:''}<button class="btn sm ${seated?'ok':''}" data-act="open" data-g="${esc(g._id)}">${seated?'Lanjutkan':(g.status==='lobby'?'Masuk':g.status==='ended'?'Lihat':'Tonton')}</button></div></div>`;
@@ -3176,7 +3286,7 @@ const ARTIFACT_URL=location.origin+location.pathname;
 const EDITION='liga';              // 'liga' (undangan, online) | 'latihan' (link publik)
 const LEAGUE_URL=location.origin+location.pathname, PRACTICE_URL=location.origin+location.pathname;
 function tableLink(gid){return ARTIFACT_URL+'#meja-'+(gid||cur.gid);}
-function inviteText(st,gid){if(st&&isHubGame(st)){const G=GAMES[st.game];return `Ayo main ${G.name} ${G.icon} (${st.game==='jualan'?'2–4 tim, '+(st.split?'bagi peran':'mode sendiri'):G.min+'–'+G.max+' pemain'})! Masuk ke meja "${st.name||'Meja'}" di sini, lalu ketuk "Duduk di meja ini": ${tableLink(gid)} (buka di Chrome/Safari, lalu masuk dengan Google)`;}return `Ayo main Saudagar Permata${st&&st.mode==='duel'?' ⚔️ Duel':''}! 💎 Masuk ke meja "${(st&&st.name)||'Meja'}" di sini, lalu ketuk "Duduk di meja ini": ${tableLink(gid)} (buka di Chrome/Safari, lalu masuk dengan Google)`;}
+function inviteText(st,gid){if(st&&isHubGame(st)){const G=GAMES[st.game];return `Ayo main ${G.name} ${G.icon} (${st.game==='jualan'?'2–4 tim, '+(st.split?'bagi peran':'mode sendiri'):G.min+'–'+G.max+' pemain'})! Masuk ke meja "${st.name||'Meja'}" di sini, lalu ketuk "Duduk di meja ini": ${tableLink(gid)} (buka di Chrome/Safari, lalu masuk dengan Google)`;}return `Ayo main Saudagar Permata${st&&st.mode==='duel'?' ⚔️ Duel':st&&st.mode==='kota'?' 🏙️ Ekspansi Kota':''}! 💎 Masuk ke meja "${(st&&st.name)||'Meja'}" di sini, lalu ketuk "Duduk di meja ini": ${tableLink(gid)} (buka di Chrome/Safari, lalu masuk dengan Google)`;}
 function waHref(st,gid){return 'https://wa.me/?text='+encodeURIComponent(inviteText(st,gid));}
 function shareBox(st){
   const link=tableLink(), wa='https://wa.me/?text='+encodeURIComponent(inviteText(st));
@@ -3205,7 +3315,7 @@ function renderWaiting(){
   const canAct=canWrite!==false&&myId;
   $('#app').innerHTML=`<section class="panel" style="max-width:620px;margin:0 auto">
     <h2 style="font-size:24px">${esc(st.name||'Meja')}</h2>
-    <p class="mute" style="font-size:14px;margin:6px 0 0">${st.mode==='duel'?'⚔️ Mode Duel: ajak 1 lawan.':'💎 Mode Klasik: ajak 2–4 orang.'} Kirim link meja ini, teman langsung masuk ke meja.</p>
+    <p class="mute" style="font-size:14px;margin:6px 0 0">${st.mode==='duel'?'⚔️ Mode Duel: ajak 1 lawan.':st.mode==='kota'?'🏙️ Mode Ekspansi Kota: ajak 2–4 orang. Rebut kota, bukan kejar 15 poin.':'💎 Mode Klasik: ajak 2–4 orang.'} Kirim link meja ini, teman langsung masuk ke meja.</p>
     ${shareBox(st)}
     <div class="seats">${seats}</div>
     <div class="row">
@@ -3727,7 +3837,7 @@ function renderGameMobile(){
     <section class="panel m-field">
       <div class="m-top"><span class="turnpill">Ronde ${st.round}</span><span>${st.status==='playing'?`Giliran <b>${myTurn?'kamu':turnName}</b>${st.endTriggered?' · <span style="color:var(--bad)">ronde terakhir!</span>':''}${rankChip(st)}${timerHTML(st)}`:'Selesai'}</span></div>
       <div class="m-opps" style="grid-template-columns:repeat(${Math.max(1,opps.length)},minmax(0,1fr))">${oppHTML}</div>
-      <div class="patrons">${st.patrons.map(patronHTML).join('')||'<span class="mute">Semua pahlawan sudah memberi dukungan.</span>'}</div>
+      ${patronsOrKota(st)}
       ${rows}
     </section>
     ${ctrl}
@@ -3777,7 +3887,7 @@ function renderGame(){
       <div class="ph"><div class="pname">${cur.local||p.bot?'':`<span class="dot ${ONLINE.has(p.id)?'on':''}"></span>`}<span class="ordn" title="Urutan giliran">${i+1}</span><span class="n">${esc(nm(st,i))}</span>${p.bot?'<span title="Bot">🤖</span>':''}${own&&nm(st,i).toLowerCase()!=='kamu'?'<span class="mine" style="font-size:12px">(kamu)</span>':''}${st.status==='playing'&&st.turn===i?'<span class="crown">▶ giliran</span>':''}</div><div class="score">${ptsOf(p)}</div></div>
       <div class="inv">${inv}</div>
       ${capHTML(tokTotal(p),MAXTOK,own,own&&myTurn?selCount():0)}
-      <div class="pmini">🃏${p.cards.length} · 🪙${tokTotal(p)}/${MAXTOK} · 📌${p.res.length}${p.pat.length?' · 🎖️'+p.pat.length:''}</div><div class="pmeta"><span>Kartu: ${p.cards.length}</span><span>Token: ${tokTotal(p)}/${MAXTOK}</span><span>Cadangan: ${p.res.length}/${MAXRES}</span><span>Pahlawan: ${p.pat.length?p.pat.map(id=>esc(PAT[id].name)).join(', '):'—'}</span></div>
+      <div class="pmini">🃏${p.cards.length} · 🪙${tokTotal(p)}/${MAXTOK} · 📌${p.res.length}${p.pat.length?' · 🎖️'+p.pat.length:''}${p.kota?' · 🏙️'+esc(KOTA[p.kota].name):''}</div><div class="pmeta"><span>Kartu: ${p.cards.length}</span><span>Token: ${tokTotal(p)}/${MAXTOK}</span><span>Cadangan: ${p.res.length}/${MAXRES}</span><span>${cur.st.mode==='kota'?'Kota: '+(p.kota?'🏙️ '+esc(KOTA[p.kota].name):'—'):'Pahlawan: '+(p.pat.length?p.pat.map(id=>esc(PAT[id].name)).join(', '):'—')}</span></div>
       ${resv}</div>`;
   });
   const myPl=seat>=0?plArr[seat]:'', players=plArr.filter((x,i)=>i!==seat).join('');
@@ -3794,7 +3904,7 @@ function renderGame(){
     <div class="mylane"><section class="panel">
       <div class="turnbar"><div class="who">${st.status==='playing'?`Ronde ${st.round} · Giliran <b class="${myTurn?'mine':''}">${myTurn?'kamu':turnName}</b>${st.players[st.turn].bot?' <span class="mute">· berpikir…</span>':''}${st.endTriggered?' · <span style="color:var(--bad)">ronde terakhir!</span>':''}${rankChip(st)}${timerHTML(st)}`:'Permainan selesai'}</div>
         <div class="mute" style="font-size:13px">${esc(st.name||'')}</div></div>
-      <div class="patrons">${st.patrons.map(patronHTML).join('')||'<span class="mute">Semua pahlawan sudah memberi dukungan.</span>'}</div>
+      ${patronsOrKota(st)}
       ${rows}
     </section>${myPl?`<div class="players">${myPl}</div>`:''}</div>
     <aside>
@@ -3897,10 +4007,10 @@ function cardModal(id,src){
 const TUTORIALS={klasik:{title:'💎 Saudagar Permata',src:'tutorial-permata.mp4',poster:'tutorial-permata.jpg',desc:'Ambil permata, beli kartu, bonus diskon, cadangkan + Emas, dukungan pahlawan, dan main bareng teman.'},
   duel:{title:'⚔️ Saudagar Duel',src:'tutorial-duel.mp4',poster:'tutorial-duel.jpg',desc:'Papan 5×5, ambil token segaris, Emas & Kecubung, kemampuan kartu, Surat Izin, isi ulang papan, dan 3 cara menang.'}};
 function openTutorial(which){
-  which=which||(cur&&cur.st&&isHubGame(cur.st)?cur.st.game:cur&&cur.st&&cur.st.mode==='duel'?'duel':'klasik');
-  const tabs=`<div class="tabs"><button class="btn sm ${which==='klasik'?'on':''}" data-act="tutorial" data-w="klasik">💎 Klasik</button><button class="btn sm ${which==='duel'?'on':''}" data-act="tutorial" data-w="duel">⚔️ Duel</button><button class="btn sm ${which==='rapat'?'on':''}" data-act="tutorial" data-w="rapat">🏛️ Rapat Rahasia</button><button class="btn sm ${which==='werewolf'?'on':''}" data-act="tutorial" data-w="werewolf">🐺 WW Satu Malam</button><button class="btn sm ${which==='wwk'?'on':''}" data-act="tutorial" data-w="wwk">🐺 WW Klasik</button><button class="btn sm ${which==='pemukim'?'on':''}" data-act="tutorial" data-w="pemukim">🏝️ Pemukim</button><button class="btn sm ${which==='jualan'?'on':''}" data-act="tutorial" data-w="jualan">🛍️ Jualan Yuk</button><button class="btn sm ${which==='sandi'?'on':''}" data-act="tutorial" data-w="sandi">🕵️ Sandi</button></div>`;
+  which=which||(cur&&cur.st&&isHubGame(cur.st)?cur.st.game:cur&&cur.st&&cur.st.mode==='duel'?'duel':cur&&cur.st&&cur.st.mode==='kota'?'kota':'klasik');
+  const tabs=`<div class="tabs"><button class="btn sm ${which==='klasik'?'on':''}" data-act="tutorial" data-w="klasik">💎 Klasik</button><button class="btn sm ${which==='duel'?'on':''}" data-act="tutorial" data-w="duel">⚔️ Duel</button><button class="btn sm ${which==='kota'?'on':''}" data-act="tutorial" data-w="kota">🏙️ Kota</button><button class="btn sm ${which==='rapat'?'on':''}" data-act="tutorial" data-w="rapat">🏛️ Rapat Rahasia</button><button class="btn sm ${which==='werewolf'?'on':''}" data-act="tutorial" data-w="werewolf">🐺 WW Satu Malam</button><button class="btn sm ${which==='wwk'?'on':''}" data-act="tutorial" data-w="wwk">🐺 WW Klasik</button><button class="btn sm ${which==='pemukim'?'on':''}" data-act="tutorial" data-w="pemukim">🏝️ Pemukim</button><button class="btn sm ${which==='jualan'?'on':''}" data-act="tutorial" data-w="jualan">🛍️ Jualan Yuk</button><button class="btn sm ${which==='sandi'?'on':''}" data-act="tutorial" data-w="sandi">🕵️ Sandi</button></div>`;
   if(which==='jualan'){openModal(`<h3>🎬 Tutorial & aturan</h3>${tabs}<div class="tutv"><video src="tutorial-jualan.mp4" poster="tutorial-jualan.jpg" controls playsinline preload="metadata"></video></div><p class="bd" style="margin:8px 0 0"><b>🛍️ Jualan Yuk</b> · ±45 detik · Papan demand, belanja SDM dan produksi, CR, dana jualan, token Pasti, dan fase jualan.</p><div class="rules tutrules">${jyRules()}</div><div class="mbtns"><button class="btn pri" data-act="close">Siap main!</button></div>`);return;}
-  if(which==='rapat'||which==='werewolf'||which==='pemukim'||which==='wwk'||which==='sandi'){openModal(`<h3>📖 Cara main & aturan</h3>${tabs}<div class="rules tutrules">${which==='sandi'?sandiRules():which==='wwk'?wkRules():which==='pemukim'?pmRules():which==='werewolf'?wwRules():rapatRules()}</div><div class="mbtns"><button class="btn pri" data-act="close">Siap main!</button></div>`);return;}
+  if(which==='rapat'||which==='werewolf'||which==='pemukim'||which==='wwk'||which==='sandi'||which==='kota'){openModal(`<h3>📖 Cara main & aturan</h3>${tabs}<div class="rules tutrules">${which==='kota'?kotaRules():which==='sandi'?sandiRules():which==='wwk'?wkRules():which==='pemukim'?pmRules():which==='werewolf'?wwRules():rapatRules()}</div><div class="mbtns"><button class="btn pri" data-act="close">Siap main!</button></div>`);return;}
   const T=TUTORIALS[which];
   openModal(`<h3>🎬 Tutorial & aturan</h3>
     ${tabs}
@@ -3930,7 +4040,7 @@ function localSetup(){
   const last=ui.lastLocal||{me:ui.nick||'Kamu',bots:randomBots(2),level:'normal',mode:'klasik'};
   ui.lpMode=last.mode||'klasik';
   openModal(`<h3>🤖 Lawan bot</h3><p class="mute" style="font-size:14px;margin:0 0 10px">Bot akan jalan otomatis di gilirannya. Nama bot sudah terisi — ubah kalau mau.</p>
-    <div class="modesel"><button class="btn sm ${ui.lpMode==='klasik'?'on':''}" data-act="lpmode" data-m="klasik">💎 Klasik (2–4)</button><button class="btn sm ${ui.lpMode==='duel'?'on':''}" data-act="lpmode" data-m="duel">⚔️ Duel (1 lawan 1)</button></div>
+    <div class="modesel"><button class="btn sm ${ui.lpMode==='klasik'?'on':''}" data-act="lpmode" data-m="klasik">💎 Klasik (2–4)</button><button class="btn sm ${ui.lpMode==='duel'?'on':''}" data-act="lpmode" data-m="duel">⚔️ Duel (1 lawan 1)</button><button class="btn sm ${ui.lpMode==='kota'?'on':''}" data-act="lpmode" data-m="kota">🏙️ Ekspansi Kota (2–4)</button></div>
     <div style="height:10px"></div>
     <div class="row" style="align-items:flex-end">
       <label class="field">Nama kamu<input id="lpMe" maxlength="20" value="${esc(last.me)}"></label>
@@ -4025,6 +4135,7 @@ document.addEventListener('click',async e=>{
     case 'jystop':openModal(`<h3>Berhenti jualan?</h3><p style="font-size:14px">Timmu tidak bisa jualan lagi di ronde ini. Sisa stok dan anggaran penjualan tetap tersimpan untuk ronde berikutnya.</p><div class="mbtns"><button class="btn" data-act="close">Batal</button><button class="btn pri" data-act="jystopok">Ya, berhenti</button></div>`);break;
     case 'jystopok':closeModal();jyMove({type:'stop'});break;
     case 'jyend':openJYEnd();break;
+    case 'kotainfo':kotaInfo(el.dataset.id);break;
     case 'sdteam':ui.sdTeamVal=el.dataset.t;tableAction('sdteam');break;
     case 'sdketua':ui.sdKVal=+el.dataset.i;tableAction('sdketua');break;
     case 'sdcard':sdClick(+el.dataset.i);break;
@@ -4337,7 +4448,8 @@ function startLocalCfg(L){
   const botPl=bots.slice(0,lmode==='duel'?1:bots.length).map((n,i)=>Object.assign(newPlayer('B'+i,n),{bot:true}));
   const total=botPl.length+1, hpos=ord==='random'?Math.floor(Math.random()*total):Math.min(+ord,total-1);
   const players=[...botPl]; players.splice(hpos,0,newPlayer('H',me));
-  const s={name:'Lawan bot',status:'lobby',players,v:1};
+  const s={name:lmode==='kota'?'Kota lawan bot':'Lawan bot',status:'lobby',players,v:1};
+  if(lmode==='kota')s.mode='kota';
   if(lmode==='duel'){s.players=s.players.slice(0,2);s.name='Duel lawan bot';startDuel(s);}else startGame(s);
   s.players.forEach((p,i)=>{p.bot=players[i].bot||false;});
   s.timer=tmr; s.turnAt=Date.now();
@@ -4705,7 +4817,7 @@ document.addEventListener('click',e=>{
 
 /* ================= HUB · MENU GAME & RAPAT RAHASIA DIREKSI ================= */
 const HUB_INFO={
-  permata:{icon:'💎',name:'Saudagar Permata',ply:'2–4 pemain · Duel 2',dur:'20–40 menit',kind:'Strategi ekonomi · terinspirasi Splendor',desc:'Kumpulkan permata, beli kartu tambang sampai istana, dan raih dukungan pahlawan nasional. Bisa lawan bot.',mk:[['MK02','investasi bertahap']]},
+  permata:{icon:'💎',name:'Saudagar Permata',ply:'2–4 pemain · Duel 2 · Kota',dur:'20–40 menit',kind:'Strategi ekonomi · terinspirasi Splendor',desc:'Kumpulkan permata, beli kartu tambang sampai istana, dan raih dukungan pahlawan nasional. Bisa lawan bot.',mk:[['MK02','investasi bertahap']]},
   rapat:{icon:'🏛️',name:'Rapat Rahasia Direksi',ply:'5–10 pemain',dur:'20–30 menit',kind:'Deduksi sosial · mirip Avalon',desc:'Direksi menjalankan 5 proyek dari kasus kuliah, tapi diam-diam ada Oknum yang ingin proyeknya gagal. Siapa yang bisa dipercaya?',mk:[['MK01','power & politics'],['MK05','keputusan kelompok']]},
   pemukim:{icon:'🏝️',name:'Pemukim Nusantara',ply:'3–4 pemain · bisa lawan bot',dur:'45–90 menit',kind:'Strategi & dagang · aturan Catan',desc:'Bangun pemukiman, jalan, dan kota di pulau acak. Hasil bumi keluar sesuai lemparan dadu. Berdagang, hindari perampok, dan raih 10 poin duluan.',mk:[['MK02','investasi & ROI'],['MK04','rantai pasok']]},
   werewolf:{icon:'🐺',name:'Werewolf',ply:'Satu Malam 3–10 · Klasik 6–20',dur:'10–60 menit',kind:'Deduksi sosial · 2 mode',desc:'<b>Satu Malam</b>: cepat, kartu peran bisa tertukar diam-diam, voting sekali. <b>Klasik</b>: banyak malam & siang untuk grup besar (sampai 20 orang), aplikasi jadi moderatornya.',mk:[['MK05','keputusan dengan info tak lengkap']]},
@@ -6069,7 +6181,7 @@ async function createTable(){
       :md==='pemukim'?{name,host:myId,createdAt:Date.now(),updatedAt:Date.now(),status:'lobby',game:'pemukim',mode:'pemukim',timer:tmr,players:[{id:myId,nick:ui.nick||''}],v:1}
       :md==='werewolf'?{name,host:myId,createdAt:Date.now(),updatedAt:Date.now(),status:'lobby',game:'werewolf',mode:'werewolf',timer:tmr,roles:null,players:[{id:myId,nick:ui.nick||''}],v:1}
       :md==='rapat'?{name,host:myId,createdAt:Date.now(),updatedAt:Date.now(),status:'lobby',game:'rapat',mode:'rapat',timer:tmr,special:true,players:[{id:myId,nick:ui.nick||''}],v:1}
-      :{name,host:myId,createdAt:Date.now(),updatedAt:Date.now(),status:'lobby',mode:md==='duel'?'duel':'klasik',timer:tmr,players:[newPlayer(myId,ui.nick)],v:1};
+      :{name,host:myId,createdAt:Date.now(),updatedAt:Date.now(),status:'lobby',mode:md==='duel'?'duel':md==='kota'?'kota':'klasik',timer:tmr,players:[newPlayer(myId,ui.nick)],v:1};
     await db.collection('games').doc(gid).set(st);
     openTable(gid,st);
   }catch(e){
@@ -6190,7 +6302,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-6';
+const BUILD_TAG='fb-7';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){
