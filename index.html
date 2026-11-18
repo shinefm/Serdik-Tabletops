@@ -748,6 +748,16 @@ body.light #turnPill{background:#fff;color:#2a2346}
 @media (prefers-reduced-motion:reduce){.pl.turn,.m-opp.turn,.pmpl.turn,.pl.mine-pl.turn,.pmpl.me.turn,body.myturn .m-ctrl{animation:none}}
 #turnPill.tmrwarn{border-color:#ff8a4c;background:#3a1f12;color:#ffe9dc}
 body.light #turnPill.tmrwarn{background:#fff1e8;color:#7a2e08;border-color:#e8692a}
+/* --- kontrol tuan rumah --- */
+.hostbtn{border-color:#b98f2c!important}
+.hacts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.hacts .btn{flex:1 1 180px}
+.hlist{display:flex;flex-direction:column;gap:6px}
+.hrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.hrow.cur{border-color:#ffd25e;box-shadow:0 0 0 1px #ffd25e}
+.hname{font-size:14.5px}.hbtn{display:flex;gap:6px;flex-wrap:wrap}
+.htag{font-size:11.5px;padding:2px 7px;border-radius:999px;background:var(--panel);border:1px solid var(--line);white-space:nowrap}
+.htag.auto{border-color:#b98f2c}.htag.turnt{border-color:#ffd25e}
+.afkbar.paused{border-color:#6aa7ff}
 .gbtn{display:inline-flex;align-items:center;gap:8px;background:#fff!important;color:#1f1f1f!important;border:1px solid #dadce0!important}
 </style>
 </head>
@@ -778,6 +788,7 @@ body.light #turnPill.tmrwarn{background:#fff1e8;color:#7a2e08;border-color:#e869
       <div><h1>Serdik Tabletop</h1><small>Game papan online · P3MDI</small></div>
     </div>
     <div class="hbtns">
+      <button class="btn sm hostbtn" id="hostBtn" data-act="hostset" style="display:none" aria-label="Atur meja">⚙️ <span class="lbl">Atur meja</span></button>
       <button class="btn sm" id="themeBtn" data-act="theme" aria-label="Ganti tema">🌙 <span class="lbl">Gelap</span></button>
       <button class="btn sm" id="histBtn" data-act="history" style="display:none" aria-label="Riwayat">📜 <span class="lbl">Riwayat</span></button>
       <button class="btn sm" id="profBtn" data-act="profile" style="display:none" aria-label="Profil">👤 <span class="lbl">Profil</span></button>
@@ -874,6 +885,7 @@ function startGame(st){
 function refill(st,t,slot){const d=st.decks['t'+t];st.market['t'+t][slot]=d.length?d.pop():null;}
 function fmtTok(o){return ALL.filter(c=>o[c]>0).map(c=>o[c]+' '+wn(c)).join(', ');}
 function doMove(st,pi,mv){
+  if(st.paused)fail('⏸️ Permainan sedang dijeda tuan rumah');
   const t0=st.turn, r=doMove0(st,pi,mv);
   if(st.turn!==t0||(st.mode==='duel'&&mv.type!=='priv'&&mv.type!=='refill'))st.turnAt=Date.now();
   return r;
@@ -2213,6 +2225,7 @@ function pmEndTurn(st){
 }
 function pmAct(st,pi,mv){
   if(st.status!=='playing')fail('Permainan sudah selesai');
+  if(st.paused)fail('⏸️ Permainan sedang dijeda tuan rumah');
   const n=st.players.length, P=st.players[pi], nm_=i=>st.players[i].nick||'Pemain '+(i+1);
   const own=()=>{if(pi!==st.turn)fail('Bukan giliranmu');};
   st.last={p:pi,m:''}; if(st.log.length>160)st.log=st.log.slice(-120);
@@ -3324,7 +3337,7 @@ function duelRules(){
 const TIMER_OPTS=[[0,'Tanpa timer'],[30,'30 detik'],[60,'1 menit'],[120,'2 menit'],[180,'3 menit'],[300,'5 menit'],[600,'10 menit']];
 function timerOptions(v){return TIMER_OPTS.map(([s,l])=>`<option value="${s}" ${+v===s?'selected':''}>${l}</option>`).join('');}
 function timerLabel(s){const o=TIMER_OPTS.find(x=>x[0]===+s);return o?o[1]:(s?s+' detik':'Tanpa timer');}
-function tmrLeft(st){if(st&&(st.game==='werewolf'||st.game==='wwk')&&st.phase!=='day')return null;return st&&st.timer&&st.status==='playing'&&st.turnAt?st.turnAt+st.timer*1000-Date.now():null;}
+function tmrLeft(st){if(st&&(st.game==='werewolf'||st.game==='wwk')&&st.phase!=='day')return null;return st&&st.timer&&st.status==='playing'&&st.turnAt?st.turnAt+st.timer*1000-(st.paused?st.paused.at:Date.now()):null;}
 function fmtLeft(ms){const s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 function timerHTML(st){const l=tmrLeft(st);if(l==null)return '';const mine=isHubGame(st)?(st.game==='jualan'?jyPending(st).includes(jyMe(st)):st.game==='pemukim'?pmPending(st).includes(pmMe(st)):rapatPending(st).includes(meIdx(st))):st.turn===actor(st);
   return `<span class="tmr ${l<10000?'crit':l<30000?'warn':''} ${mine?'mine':''}" data-tmr title="Waktu per giliran: ${timerLabel(st.timer)}">⏱ <b>${fmtLeft(l)}</b></span>`;}
@@ -3374,7 +3387,7 @@ setInterval(tickTimer,500);
 /* bots seated at an online table: run by the host (or, if the host is away, the first online seated player) */
 function maybeOnlineBot(){
   if(!cur||cur.local||!cur.st||canWrite===false||!myId||cur.st.game)return;
-  const st=cur.st; if(st.status!=='playing')return;
+  const st=cur.st; if(st.status!=='playing'||st.paused)return;
   const p=st.players[st.turn]; if(!p||!(p.bot||p.auto)){return;}
   const key=cur.gid+':'+st.v; if(ui.obKey===key)return;
   const humans=st.players.filter(q=>!q.bot).map(q=>q.id), order=[st.host,...humans.filter(x=>x!==st.host)];
@@ -3414,13 +3427,56 @@ function afkReport(s,me,t){
 function afkCancel(s,me){const a=s.afk;if(!a)throw NOOP;if(a.by!==s.players[me].id)fail('Hanya pelapor pertama yang bisa membatalkan');s.afk=null;s.afkNote={m:nm(s,me)+' membatalkan laporan AFK',at:Date.now()};}
 function afkHere(s,me){const uid=s.players[me].id;if(s.afk&&s.afk.tid===uid){s.afk=null;s.afkNote={m:nm(s,me)+' kembali, laporan AFK dibatalkan',at:Date.now()};}if(s.players[me].auto){delete s.players[me].auto;s.afkNote={m:nm(s,me)+' kembali bermain sendiri (autopilot dimatikan)',at:Date.now()};}}
 function afkResolve(s){
-  const a=s.afk; if(!a)throw NOOP;
+  const a=s.afk; if(!a||s.paused)throw NOOP;
   const t=s.players.findIndex(q=>q.id===a.tid);
   if(t<0||s.status!=='playing'||s.players[t].auto){s.afk=null;return;}
   if(Date.now()<a.until)throw NOOP;
   if(a.stage==='vote'){s.afk=null;s.afkNote={m:'Laporan AFK kedaluwarsa (tidak semua pemain ikut melapor)',at:Date.now()};return;}
   s.afkNote={m:'🤖 '+nm(s,t)+' tidak merespons — kini dimainkan autopilot',at:Date.now()}; s.players[t].auto=true; s.afk=null;
 }
+function hostName(st){const i=st.players.findIndex(q=>q.id===st.host);return i>=0?nm(st,i):'tuan rumah';}
+function hostCan(){const st=cur&&cur.st;return !!(st&&!cur.local&&online==='on'&&canWrite!==false&&afkGameOk(st)&&st.host===myId);}
+function hostOp(s,kind,i){
+  if(s.host!==myId)fail('Hanya tuan rumah yang bisa mengatur meja');
+  if(s.status!=='playing')fail('Permainan sudah selesai');
+  const me=meIdx(s), who=me>=0?nm(s,me):'Tuan rumah', note=m=>{s.afkNote={m,at:Date.now()};};
+  if(kind==='pause'){if(s.paused)throw NOOP;s.paused={at:Date.now(),by:myId};note('⏸️ '+who+' menjeda permainan');return;}
+  if(kind==='resume'){if(!s.paused)throw NOOP;const d=Date.now()-s.paused.at;if(s.turnAt)s.turnAt+=d;if(s.afk&&s.afk.until)s.afk.until+=d;s.paused=null;note('▶ '+who+' melanjutkan permainan');return;}
+  if(kind==='skip'){if(s.paused)fail('Lanjutkan permainan dulu sebelum melewati giliran');const t=s.turn,name=nm(s,t);
+    if(s.game==='pemukim')pmTimeoutRun(s);else doMove(s,t,{type:'pass'});
+    note('⏭ '+who+' melewati giliran '+name);return;}
+  const P=s.players[i]; if(!P)fail('Pemain tidak ditemukan');
+  if(kind==='bot'){if(P.bot||P.auto)throw NOOP;P.auto=true;if(s.afk&&s.afk.tid===P.id)s.afk=null;note('🤖 '+nm(s,i)+' kini dimainkan bot (diatur tuan rumah)');return;}
+  if(kind==='human'){if(!P.auto)throw NOOP;delete P.auto;note('🙋 '+nm(s,i)+' kembali bermain sendiri');return;}
+  if(kind==='host'){if(P.bot)fail('Bot tidak bisa jadi tuan rumah');if(P.id===myId)throw NOOP;s.host=P.id;note('👑 '+nm(s,i)+' kini menjadi tuan rumah');return;}
+  fail('Perintah tidak dikenal');
+}
+function hostDo(kind,i,ok){closeModal();commitOnline(s=>hostOp(s,kind,i)).then(()=>{if(ok)toast(ok);}).catch(e=>{if(!e||!e.noop)toast((e&&e.message)||'Gagal, coba lagi');});}
+function hostModal(){
+  if(!hostCan())return;
+  const st=cur.st, t=st.turn, me=meIdx(st);
+  const rows=st.players.map((p,i)=>{
+    const tag=p.bot?'<span class="htag">🤖 Bot</span>':p.auto?'<span class="htag auto">🤖 Autopilot</span>':'';
+    const crown=p.id===st.host?' 👑':'', you=i===me?' <span class="mute">(kamu)</span>':'';
+    let btns='';
+    if(!p.bot){btns+=p.auto?`<button class="btn sm" data-act="hhuman" data-i="${i}">🙋 Kembalikan</button>`:`<button class="btn sm" data-act="hbot" data-i="${i}">🤖 Ganti bot</button>`;
+      if(p.id!==st.host)btns+=`<button class="btn sm" data-act="hhost" data-i="${i}">👑 Jadikan tuan rumah</button>`;}
+    return `<div class="hrow ${i===t?'cur':''}"><div class="hname"><span class="ordn ${i===me?'me':''}">${i+1}</span><b>${esc(nm(st,i))}</b>${crown}${you} ${tag}${i===t?' <span class="htag turnt">▶ giliran</span>':''}</div><div class="hbtn">${btns}</div></div>`;}).join('');
+  openModal(`<h3>⚙️ Atur meja</h3><p class="mute" style="font-size:13.5px;margin:0 0 10px">Hanya tuan rumah yang melihat menu ini. Semua pemain mendapat pemberitahuan setiap ada perubahan.</p>
+    <div class="hacts">${st.paused?'<button class="btn pri" data-act="hresume">▶ Lanjutkan permainan</button>':'<button class="btn" data-act="hpause">⏸️ Jeda permainan</button>'}
+    <button class="btn" data-act="hskip" ${st.paused?'disabled':''}>⏭ Lewati giliran ${esc(nm(st,t))}</button></div>
+    <div class="hlist">${rows}</div>
+    <div class="mute" style="font-size:12.5px;line-height:1.5;margin-top:8px">🤖 <b>Ganti bot</b>: giliran pemain itu dimainkan bot dan poinnya tetap miliknya. Pemain bisa mengambil alih lagi lewat tombol “Ambil alih”. 👑 <b>Jadikan tuan rumah</b>: kendali meja pindah ke pemain itu.</div>
+    <div class="mbtns"><button class="btn" data-act="close">Tutup</button></div>`);
+}
+function hostConfirm(i){
+  const st=cur.st;
+  openModal(`<h3>👑 Pindahkan tuan rumah?</h3><p style="font-size:14.5px;margin:0 0 8px"><b>${esc(nm(st,i))}</b> akan menjadi tuan rumah. Setelah itu kamu tidak bisa lagi menjeda, melewati giliran, atau mengganti pemain dengan bot.</p>
+    <div class="mbtns"><button class="btn" data-act="hostset">Batal</button><button class="btn pri" data-act="hhostok" data-i="${i}">👑 Pindahkan</button></div>`);
+}
+function hostTick(){const b=$('#hostBtn');if(!b)return;const on=view==='table'&&hostCan();if(b._on!==on){b._on=on;b.style.display=on?'':'none';}
+  if(!on&&$('#modal .hlist')&&!(cur&&cur.st&&cur.st.host===myId))closeModal();}
+setInterval(hostTick,500);
 function afkCommit(fn,okMsg){commitOnline(fn).then(()=>{if(okMsg)toast(okMsg);}).catch(e=>{if(!e||!e.noop)toast((e&&e.message)||'Gagal, coba lagi');});}
 function afkPlAttr(st,i){if(!cur||cur.local||online!=='on'||canWrite===false||!st||!afkGameOk(st))return '';const me=meIdx(st);if(me<0||!afkCanTarget(st,me,i))return '';return ' data-act="afkpl" data-i="'+i+'" title="Ketuk untuk melaporkan AFK"';}
 function afkPlModal(i){
@@ -3438,6 +3494,8 @@ function afkPlModal(i){
     <div class="mbtns"><button class="btn" data-act="close">Tutup</button>${btn}</div>`);
 }
 function afkBarHTML(st){
+  if(st.paused){const host=st.host===myId;
+    return `<div class="afkbar top paused"><span>⏸️ <b>Permainan dijeda</b> oleh tuan rumah${host?'':' ('+esc(hostName(st))+')'}.</span>${host?'<button class="btn sm pri" data-act="hresume">▶ Lanjutkan</button>':''}</div>`;}
   const me=meIdx(st); if(me<0)return '';
   const a=st.afk, P=st.players[me];
   if(P.auto)return `<div class="afkbar mine"><span>🤖 <b>Autopilot</b> sedang memainkan giliranmu.</span><button class="btn sm pri" data-act="afkhere">🙋 Ambil alih</button></div>`;
@@ -3876,6 +3934,14 @@ document.addEventListener('click',async e=>{
     case 'fblogout':closeModal();try{await fbLogout();}catch(err){toast('Gagal keluar');}break;
     case 'reconnect':toast('Menyambung ulang…');reconnectNow();break;
     case 'afkpl':afkPlModal(+el.dataset.i);break;
+    case 'hostset':hostModal();break;
+    case 'hpause':hostDo('pause',0,'⏸️ Permainan dijeda');break;
+    case 'hresume':hostDo('resume',0,'▶ Permainan dilanjutkan');break;
+    case 'hskip':hostDo('skip',0,'⏭ Giliran dilewati');break;
+    case 'hbot':hostDo('bot',+el.dataset.i,'🤖 Pemain diganti bot');break;
+    case 'hhuman':hostDo('human',+el.dataset.i,'🙋 Pemain kembali bermain sendiri');break;
+    case 'hhost':hostConfirm(+el.dataset.i);break;
+    case 'hhostok':hostDo('host',+el.dataset.i,'👑 Tuan rumah dipindahkan');break;
     case 'afkgo':{closeModal();const i=+el.dataset.i;afkCommit(s=>afkReport(s,meIdx(s),i),'🚨 Laporan AFK tercatat');break;}
     case 'afkcancel':afkCommit(s=>afkCancel(s,meIdx(s)));break;
     case 'afkhere':afkCommit(s=>afkHere(s,meIdx(s)),'👍 Kamu kembali memegang kendali');break;
@@ -5119,7 +5185,7 @@ function pmMaybeBot(){
 }
 function pmOnlineBot(){
   if(!cur||cur.local||!cur.st||cur.st.game!=='pemukim'||canWrite===false||!myId)return;
-  const st=cur.st; if(st.status!=='playing')return; const nx=pmBotNext(st); if(!nx)return;
+  const st=cur.st; if(st.status!=='playing'||st.paused)return; const nx=pmBotNext(st); if(!nx)return;
   const key=cur.gid+':'+st.v; if(ui.obKey===key)return;
   const humans=st.players.filter(q=>!q.bot).map(q=>q.id), order=[st.host,...humans.filter(x=>x!==st.host)];
   const runner=order.find(id=>id===myId||ONLINE.has(id)), stalled=st.turnAt&&Date.now()-st.turnAt>9000;
@@ -5838,7 +5904,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-3';
+const BUILD_TAG='fb-4';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){
