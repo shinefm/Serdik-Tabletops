@@ -71,15 +71,15 @@ function kotaArt(id){return KSVG[id]||(KSVG[id]=`<svg viewBox="0 0 100 70" prese
 function kotaTile(st,id,p){
   const K=KOTA[id], own=kotaOwner(st,id), req=p?kotaReq(id,p):null;
   const mark=i=>req?(req[i].ok?' ok':' no'):'';
-  let k=0;
-  const items=[`<span class="kreq kpts${mark(k++)}" title="Minimal ${K.pts} poin">⭐${K.pts}</span>`];
-  for(const c in K.need)items.push(`<span class="hsq c-${c}${mark(k++)}" title="${K.need[c]} kartu ${CNAME[c]}">${K.need[c]}</span>`);
-  if(K.same)items.push(`<span class="kreq ksame${mark(k++)}" title="${K.same} kartu dari satu warna apa pun">${K.same}×🎨</span>`);
-  if(K.each)items.push(`<span class="kreq ksame${mark(k++)}" title="Minimal 1 kartu dari tiap warna">1 tiap🎨</span>`);
+  let k=1;
+  const reqs=[];
+  for(const c in K.need)reqs.push(`<span class="kc c-${c}${mark(k++)}" title="${K.need[c]} kartu ${CNAME[c]}">${K.need[c]}</span>`);
+  if(K.same)reqs.push(`<span class="kc kany${mark(k++)}" title="${K.same} kartu dari satu warna apa pun">${K.same}</span>`);
+  if(K.each)reqs.push(`<span class="kc keach${mark(k++)}" title="Minimal 1 kartu dari tiap warna">1</span>`);
   const ready=req&&own==null&&!p.kota&&req.every(x=>x.ok);
   return `<div class="kota kt-${KPAL[id]} ${own!=null?'taken':''} ${ready?'ready':''}" data-act="kotainfo" data-id="${id}">
-    <div class="kart">${kotaArt(id)}<div class="kn">${esc(K.name)}</div>${own!=null?`<div class="kstamp">🏁 ${esc(nm(st,own))}</div>`:ready?'<div class="kstamp ok">✅ Siap direbut</div>':''}</div>
-    <div class="kr">${items.join('')}</div></div>`;
+    <div class="kart">${kotaArt(id)}<div class="kn">${esc(K.name)}</div>${own!=null?`<div class="kstamp">🏁 ${esc(nm(st,own))}</div>`:ready?'<div class="kstamp ok">✅ Siap</div>':''}</div>
+    <div class="kside ${reqs.length>=3?'many':''}"><span class="kp${mark(0)}" title="Minimal ${K.pts} poin">${K.pts}</span>${reqs.length?'<span class="kplus">+</span>'+reqs.join(''):''}</div></div>`;
 }
 function kotaPanel(st){
   const seat=actor(st), p=seat>=0?st.players[seat]:null;
