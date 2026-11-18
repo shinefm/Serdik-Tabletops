@@ -1303,7 +1303,7 @@ function kotaMoveD(st,pi,P){
   const ms=kvMoves(st,pi,P); if(!ms.length)return {type:'pass'};
   if(!p.kota){let win=null;for(const r of ms){const q=r.s.players[pi];if(q.kota){const v=ptsOf(q);if(!win||v>win.v)win={mv:r.mv,v};}}if(win)return win.mv;}
   const th=P.noDeny?null:kotaThreat(st,pi);
-  const sc=ms.map(r=>{let v=kvEval(r.s,pi,P);if(r.mv.type==='pass')v-=5;if(th&&(r.mv.type==='buy'||r.mv.type==='reserve')&&r.mv.tier===th.tier&&r.mv.slot===th.slot)v+=P.deny||6;return {r,v};}).sort((a,b)=>b.v-a.v);
+  const sc=ms.map(r=>{let v=kvEval(r.s,pi,P);if(r.mv.type==='pass')v-=5;if(r.mv.type==='reserve')v-=(P.resMv||0);if(r.mv.type==='take'&&Object.keys(r.mv.picks).length===1)v+=(P.two2||0);if(th&&(r.mv.type==='buy'||r.mv.type==='reserve')&&r.mv.tier===th.tier&&r.mv.slot===th.slot)v+=P.deny||6;return {r,v};}).sort((a,b)=>b.v-a.v);
   const D=P.depth||1; if(D<2)return sc[0].r.mv;
   let best=null;
   for(const x of sc.slice(0,P.beam||6)){const s1=clone(x.r.s);s1.turn=pi;s1.status='playing';
