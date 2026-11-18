@@ -829,6 +829,28 @@ body.light #turnPill.tmrwarn{background:#fff1e8;color:#7a2e08;border-color:#e869
 
 .brand[data-act="home"]{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
 .brand[data-act="home"]:active{transform:scale(.97)}
+/* --- animasi dapat pahlawan/kota --- */
+.awov{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;background:rgba(20,14,8,.55);backdrop-filter:blur(2px);animation:awfade .25s ease-out;cursor:pointer;overflow:hidden}
+.awov.out{animation:awfadeout .35s ease-in forwards}
+.awrays{position:absolute;width:160vmax;height:160vmax;left:50%;top:50%;margin:-80vmax 0 0 -80vmax;background:repeating-conic-gradient(rgba(255,214,94,.28) 0 10deg,transparent 10deg 20deg);animation:awspin 9s linear infinite,awfade .6s ease-out;mask:radial-gradient(circle,#000 0,transparent 55%);-webkit-mask:radial-gradient(circle,#000 0,transparent 55%)}
+.awbox{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;perspective:900px}
+.awcard{animation:awpop .9s cubic-bezier(.2,1.4,.4,1) both;filter:drop-shadow(0 12px 24px rgba(0,0,0,.5)) drop-shadow(0 0 22px rgba(255,214,94,.65))}
+.awpat{width:150px}.awpat .patron{width:150px;cursor:default}.awpat.awroy{width:170px}
+.awkota{width:210px;border:3px solid #3b2a20;border-radius:12px;overflow:hidden;background:#f4efe3;box-shadow:0 0 0 3px #f0c55e}
+.awkota .kart{width:100%;height:auto;aspect-ratio:100/70}.awkota .kart .kn{font-size:16px;padding:3px 10px 3px 8px}
+.awtxt{text-align:center;color:#fff8e6;animation:awup .5s .35s ease-out both}
+.awt{font:800 21px/1.2 Fraunces,serif;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.aws{margin-top:4px;font-size:15px;color:#ffe9a8;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.awov.me .awt{color:#ffe14d}
+.awconf{position:absolute;inset:0;pointer-events:none}
+.awconf i{position:absolute;left:50%;top:42%;width:9px;height:14px;border-radius:2px;background:hsl(calc(var(--k)*26),85%,60%);animation:awconf 1.4s calc(var(--k)*25ms) ease-out both;--a:calc(var(--k)*25.7deg)}
+@keyframes awfade{from{opacity:0}to{opacity:1}}
+@keyframes awfadeout{to{opacity:0}}
+@keyframes awspin{to{transform:rotate(360deg)}}
+@keyframes awpop{0%{transform:translateZ(-600px) rotateY(160deg) scale(.15);opacity:0}55%{transform:translateZ(60px) rotateY(-12deg) scale(1.18);opacity:1}75%{transform:rotateY(6deg) scale(.96)}100%{transform:none}}
+@keyframes awup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes awconf{0%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(0) scale(.4);opacity:1}100%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-46vmin) rotate(220deg);opacity:0}}
+@media(prefers-reduced-motion:reduce){.awcard,.awrays,.awconf i{animation:none}}
 .gbtn{display:inline-flex;align-items:center;gap:8px;background:#fff!important;color:#1f1f1f!important;border:1px solid #dadce0!important}
 </style>
 </head>
@@ -3716,7 +3738,7 @@ function renderDuel(){
     <section class="panel d-me">${duelPlayerHTML(st,meI,seat>=0,myTurn)}</section>
     <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan permainan</summary>${logs}</details>
   </div>`;
-  maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
+  awardWatch(st); maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
 }
 function cardModalDuel(id,src){
   const st=cur.st, seat=actor(st), me=seat>=0?st.players[seat]:null, c=CARDS[id];
@@ -4025,6 +4047,39 @@ function maybeRankPop(st){
   rankPop(seat===0?'up':'last','<span class="rpnum">'+(seat+1)+'</span>',`Kamu urutan ${seat+1}`,seat===0?`dari ${n} pemain · kamu jalan duluan!`:`dari ${n} pemain`,4500);
 }
 function endKey(){return cur&&(cur.lid||cur.gid);}
+/* ================= Animasi dapat pahlawan / bangsawan / kota ================= */
+function awardKey(){return cur?(cur.local?'L'+(cur.lid||''):'G'+(cur.gid||'')):'';}
+function awardWatch(st){
+  if(!st||isHubGame(st)||!st.players)return;
+  const key=awardKey(); if(!key)return;
+  const snap=st.players.map(p=>({pat:[...(p.pat||[])],roy:[...(p.roy||[])],kota:p.kota||null}));
+  ui.awSeen=ui.awSeen||{};
+  const prev=ui.awSeen[key]; ui.awSeen[key]=snap;
+  if(!prev||prev.length!==snap.length||cur.guided)return;
+  const seat=actor(st);
+  snap.forEach((s,i)=>{
+    const who=i===seat?'Kamu':nm(st,i);
+    s.pat.filter(id=>!prev[i].pat.includes(id)).forEach(id=>awardQueue({kind:'pat',id,i,who,me:i===seat}));
+    s.roy.filter(id=>!prev[i].roy.includes(id)).forEach(id=>awardQueue({kind:'roy',id,i,who,me:i===seat}));
+    if(s.kota&&!prev[i].kota)awardQueue({kind:'kota',id:s.kota,i,who,me:i===seat});
+  });
+}
+function awardQueue(a){ui.awQ=ui.awQ||[];ui.awQ.push(a);if(!ui.awBusy)awardNext();}
+function awardNext(){
+  const a=(ui.awQ||[]).shift(); if(!a){ui.awBusy=false;return;}
+  ui.awBusy=true; const st=cur&&cur.st;
+  let card='',title='',sub='';
+  if(a.kind==='pat'){const P=PAT[a.id];card=`<div class="awpat">${patronHTML(a.id)}</div>`;title=`${esc(a.who)} mendapat dukungan`;sub=`<b>${esc(P.name)}</b> · +3 poin`;}
+  else if(a.kind==='roy'){card=`<div class="awpat awroy">${royalHTML(st,a.id)}</div>`;title=`${esc(a.who)} mendapat bangsawan`;sub=`+${ROYALS[a.id].pts} poin`;}
+  else{const K=KOTA[a.id];card=`<div class="awkota"><div class="kart">${kotaArt(a.id)}<div class="kn">${esc(K.name)}</div></div></div>`;title=`${esc(a.who)} ${a.me?'merebut':'merebut'} Kota ${esc(K.name)}!`;sub=st&&st.status==='playing'?'Ini ronde terakhir!':'🏙️ Kota direbut';}
+  const el=document.createElement('div'); el.className='awov '+(a.me?'me':''); el.setAttribute('role','status');
+  el.innerHTML=`<div class="awrays"></div><div class="awbox"><div class="awcard">${card}</div><div class="awtxt"><div class="awt">${title}</div><div class="aws">${sub}</div></div></div>${a.me?'<div class="awconf">'+Array.from({length:14},(_,k)=>`<i style="--k:${k}"></i>`).join('')+'</div>':''}`;
+  const done=()=>{if(el._d)return;el._d=1;el.classList.add('out');setTimeout(()=>{el.remove();awardNext();},350);};
+  el.addEventListener('click',done); document.body.appendChild(el);
+  try{if(a.me&&navigator.vibrate)navigator.vibrate([60,40,90]);}catch(e){}
+  setTimeout(done,a.kind==='kota'?3400:2800);
+}
+
 function maybeEndPopup(st){
   if(!st||st.status!=='ended')return;
   const app=$('#app'); if(app&&!app.querySelector('.endpill')){const b=document.createElement('button');b.className='endpill';b.dataset.act='showend';b.textContent='🏁 Permainan selesai · Lihat hasil';app.appendChild(b);}
@@ -4107,7 +4162,7 @@ function renderGameMobile(){
     ${ctrl}
     <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan permainan</summary>${logs}</details>
   </div>`;
-  maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
+  awardWatch(st); maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
 }
 let _wasMobile=null;
 window.addEventListener('resize',()=>{const m=isMobile();if(m!==_wasMobile){_wasMobile=m;if(view==='table'&&cur&&cur.st&&cur.st.status!=='lobby')render();}});
@@ -4182,7 +4237,7 @@ function renderGame(){
       <div class="players">${players}</div>
       <details class="panel log" ${ui.logOpen??(window.innerWidth>760)?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer;margin-bottom:4px">Catatan permainan</summary>${logs}</details>
     </aside></div>`;
-  maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
+  awardWatch(st); maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
 }
 function maybeBot(){
   if(cur&&cur.st&&cur.st.game==='pemukim')return pmMaybeBot();
@@ -6567,7 +6622,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-14';
+const BUILD_TAG='fb-15';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){
