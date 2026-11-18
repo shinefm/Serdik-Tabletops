@@ -91,11 +91,30 @@ function patronsOrKota(st){
 }
 function kotaInfo(id){
   const st=cur.st, K=KOTA[id], seat=actor(st), p=seat>=0?st.players[seat]:null, own=kotaOwner(st,id);
-  const lbl=x=>x.t==='pts'?`⭐ Minimal ${x.n} poin`:x.t==='c'?`${x.n} kartu ${wn(x.c)}`:x.t==='same'?`${x.n} kartu dari satu warna apa pun`:'Minimal 1 kartu dari tiap warna (5 warna)';
-  const rows=(p?kotaReq(id,p):kotaReq(id,{cards:[],pat:[]})).map(x=>`<div class="krow">${p?(x.ok?'✅':'⬜'):'•'} ${lbl(x)}${p?` <span class="bd">(kamu: ${x.t==='each'?x.have+' warna':x.have})</span>`:''}</div>`).join('');
+  const req=kotaReq(id,p||{cards:[],pat:[]});
+  const ico=x=>x.t==='pts'?`<span class="kp">${x.n}</span>`:x.t==='c'?`<span class="kc c-${x.c}">${x.n}</span>`:x.t==='same'?`<span class="kc kany">${x.n}</span>`:'<span class="kc keach">1</span>';
+  const txt=x=>x.t==='pts'?`<b>Minimal ${x.n} poin</b> (⭐ poin dari kartu yang sudah kamu beli).`
+    :x.t==='c'?`<b>${x.n} kartu ${wn(x.c)}</b> yang sudah kamu beli.`
+    :x.t==='same'?`<b>${x.n} kartu dari satu warna yang sama</b>, warnanya bebas. Contoh: ${x.n} kartu Merah, atau ${x.n} kartu Biru.`
+    :`<b>Minimal 1 kartu dari tiap warna</b>: Putih, Biru, Hijau, Merah, dan Hitam.`;
+  const have=x=>!p?'':x.t==='pts'?`kamu punya ${x.have} poin`:x.t==='each'?`kamu punya ${x.have} dari 5 warna`:x.t==='same'?`warna terbanyakmu ${x.have} kartu`:`kamu punya ${x.have}`;
+  const rows=req.map(x=>`<div class="kirow ${p?(x.ok?'ok':'no'):''}"><div class="kiico">${ico(x)}</div><div class="kitx">${txt(x)}${p?`<div class="bd">${x.ok?'✅':'⬜'} ${have(x)}${x.ok?'':` · kurang ${x.t==='each'?(5-x.have)+' warna':Math.max(0,x.n-x.have)}`}</div>`:''}</div></div>`).join('');
+  const done=p&&req.every(x=>x.ok);
+  const status=own!=null?`🏁 Sudah direbut <b>${esc(nm(st,own))}</b>.`
+    :p&&p.kota?`Kamu sudah punya Kota ${esc(KOTA[p.kota].name)}. Tiap pemain hanya bisa punya satu kota.`
+    :done?'✅ <b>Semua syarat terpenuhi!</b> Kota ini direbut otomatis di akhir giliranmu.'
+    :'Penuhi <b>semua</b> syarat di bawah. Kota direbut otomatis di akhir giliranmu.';
   openModal(`<div class="kinfoart">${kotaArt(id)}</div><h3>🏙️ Kota ${esc(K.name)}</h3>
-    <p class="bd" style="margin:0 0 8px">${own!=null?`Sudah direbut ${esc(nm(st,own))}.`:'Kota direbut otomatis di akhir giliran saat semua syarat terpenuhi. Kartu bonus = kartu yang sudah kamu beli.'}</p>
-    ${rows}<div class="mbtns"><button class="btn pri" data-act="close">Tutup</button></div>`);
+    <p style="font-size:14px;margin:0 0 8px">${status}</p>
+    <div class="kirows">${rows}</div>
+    <details class="kileg"><summary>❓ Arti ikon di kartu kota</summary>
+      <div class="kirow"><div class="kiico"><span class="kp">12</span></div><div class="kitx">Kotak emas = poin minimal.</div></div>
+      <div class="kirow"><div class="kiico"><span class="kc c-r">3</span></div><div class="kitx">Kartu berwarna = jumlah kartu bonus warna itu (diskon permanen dari kartu yang sudah dibeli, bukan token permata).</div></div>
+      <div class="kirow"><div class="kiico"><span class="kc kany">4</span></div><div class="kitx">Kartu abu-abu bergaris (tanpa warna) = sekian kartu dari <b>satu warna yang sama</b>, warnanya bebas.</div></div>
+      <div class="kirow"><div class="kiico"><span class="kc keach">1</span></div><div class="kitx">Kartu pelangi = minimal 1 kartu dari <b>tiap</b> warna.</div></div>
+      <div class="bd" style="margin-top:6px">Garis hijau di kartu kota = syarat yang sudah kamu penuhi. Kota pertama yang direbut memicu ronde terakhir, dan hanya pemilik kota yang bisa menang.</div>
+    </details>
+    <div class="mbtns"><button class="btn pri" data-act="close">Mengerti</button></div>`);
 }
 function kotaRules(){
   return `<h3>🏙️ Saudagar Permata · Ekspansi Kota (2–4 pemain)</h3>

@@ -73,8 +73,12 @@ rep("</style>","""/* --- Ekspansi Kota --- */
 .kota .ok{outline:2px solid #1b9460;outline-offset:1px}
 .kota.ready{box-shadow:0 0 0 3px #1b9460,0 0 14px #1b946088,3px 4px 0 2px rgba(0,0,0,.4)}
 .kota.taken .kart svg{filter:grayscale(.85) brightness(.9)}.kota.taken .kside{opacity:.5}
-.kinfoart{border-radius:10px;overflow:hidden;border:2px solid #3b2a20;aspect-ratio:100/62;margin:0 0 8px}.kinfoart svg{width:100%;height:100%;display:block}
-.krow{font-size:14.5px;margin:4px 0}
+.kinfoart{border-radius:10px;overflow:hidden;border:2px solid #3b2a20;aspect-ratio:100/50;margin:0 0 8px}.kinfoart svg{width:100%;height:100%;display:block}
+.kirows{display:flex;flex-direction:column;gap:6px}
+.kirow{display:flex;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:14px;line-height:1.4}
+.kirow.ok{border-color:#1b9460;box-shadow:inset 3px 0 0 #1b9460}.kirow.no{box-shadow:inset 3px 0 0 #d9a63a}
+.kiico{flex:0 0 32px;display:flex;justify-content:center}.kiico .kc{width:22px;height:28px;font-size:13px}
+.kileg{margin-top:10px;font-size:13.5px}.kileg summary{cursor:pointer;font-weight:700;margin-bottom:6px}.kileg .kirow{margin:4px 0;background:transparent}
 .m-field .kotas{gap:7px;margin:0 2px 8px}
 @media(max-width:560px){.kotas{gap:6px;margin:0 0 8px;justify-content:space-between}.kota{border-radius:7px;box-shadow:0 0 0 1.5px var(--kt,#1f5f6b),2px 3px 0 1px rgba(0,0,0,.4)}.kart{width:70px;height:70px}.kart .kn{font-size:9px;padding:1px 4px 1px 3px}.kstamp{font-size:8px;padding:1px 3px}.kside{width:24px;gap:2px;padding:3px 0 4px;border-left-width:1.5px}.kp{min-width:20px;height:19px;font-size:12.5px;border-radius:5px;border-width:1px;padding:0 2px}.kplus{font-size:9px}.kc{width:15px;height:18px;font-size:10px;border-width:1px;border-radius:3px}.kside.many{width:36px;gap:3px 2px}}
 
