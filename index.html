@@ -758,6 +758,7 @@ body.light #turnPill.tmrwarn{background:#fff1e8;color:#7a2e08;border-color:#e869
 .htag{font-size:11.5px;padding:2px 7px;border-radius:999px;background:var(--panel);border:1px solid var(--line);white-space:nowrap}
 .htag.auto{border-color:#b98f2c}.htag.turnt{border-color:#ffd25e}
 .afkbar.paused{border-color:#6aa7ff}
+.hsub{font-size:12.5px;font-weight:700;opacity:.75;margin:6px 2px 0;text-transform:uppercase;letter-spacing:.4px}
 .gbtn{display:inline-flex;align-items:center;gap:8px;background:#fff!important;color:#1f1f1f!important;border:1px solid #dadce0!important}
 </style>
 </head>
@@ -1887,7 +1888,7 @@ function hubWinners(st){
   if(st.game==='werewolf'){const R=st.reveal;if(!R)return st.players.map(()=>false);return st.players.map((p,i)=>{const t=WW_ROLES[R.fin[i]].t;return t==='v'?R.vw:t==='w'?R.ww:R.dead.includes(i);});}
   return st.players.map(()=>false);
 }
-function hubAct(st,pi,mv){return st.game==='jualan'?jyAct(st,pi,mv):st.game==='sandi'?sandiAct(st,pi,mv):st.game==='werewolf'?wwAct(st,pi,mv):st.game==='pemukim'?pmAct(st,pi,mv):st.game==='wwk'?wkAct(st,pi,mv):rapatAct(st,pi,mv);}
+function hubAct(st,pi,mv){if(st.paused&&st.status==='playing')fail('⏸️ Permainan sedang dijeda tuan rumah');return st.game==='jualan'?jyAct(st,pi,mv):st.game==='sandi'?sandiAct(st,pi,mv):st.game==='werewolf'?wwAct(st,pi,mv):st.game==='pemukim'?pmAct(st,pi,mv):st.game==='wwk'?wkAct(st,pi,mv):rapatAct(st,pi,mv);}
 function hubStart(st){return st.game==='jualan'?jyStart(st):st.game==='sandi'?sandiStart(st):st.game==='werewolf'?wwStart(st):st.game==='pemukim'?pmStart(st):st.game==='wwk'?wkStart(st):rapatStart(st);}
 
 /* ---------- WEREWOLF SATU MALAM (One Night Ultimate Werewolf) ---------- */
@@ -2471,7 +2472,7 @@ const JY_KEYS={h0:'hr',h1:'hr',h2:'hr',u12:'hr',u23:'hr',H:'op',M:'op',L:'op',cr
 function jyNewDraft(){return {h0:0,h1:0,h2:0,u12:0,u23:0,H:0,M:0,L:0,cr:0,sl:0};}
 function jyDraftCost(d){const hr=d.h0*50+d.h1*100+d.h2*150+(d.u12+d.u23)*50, op=d.H*150+d.M*100+d.L*50, mk=d.cr*50, sl=d.sl;return {hr,op,mk,sl,tot:hr+op+mk+sl};}
 function jyTeamOf(st,pi){const p=st.players[pi];return p&&p.team!=null?p.team:-1;}
-function jyHolder(st,t,div){const T=st.teams[t];if(!T)return [];if(T.bot)return [];
+function jyHolder(st,t,div){const T=st.teams[t];if(!T)return [];if(T.bot||T.auto)return [];
   if(st.split)return T.roles[div]!=null?[T.roles[div]]:[];return T.members.slice();}
 function jyCan(st,pi,t,div){return jyTeamOf(st,pi)===t&&jyHolder(st,t,div).includes(pi);}
 /* ---------- mulai ---------- */
@@ -2529,6 +2530,7 @@ function jyMul(x){return Number.isInteger(x)&&x>=0&&x%JY.STEP===0;}
 /* ---------- aksi ---------- */
 function jyAct(st,pi,mv){
   if(st.status!=='playing')fail('Permainan belum/ sudah selesai');
+  if(st.paused)fail('⏸️ Permainan sedang dijeda tuan rumah');
   const t=mv.team!=null&&pi===-9?mv.team:jyTeamOf(st,pi);   // pi=-9: bot/autopilot
   const T=st.teams[t]; if(!T)fail('Kamu bukan anggota tim mana pun');
   const can=div=>pi===-9||jyCan(st,pi,t,div);
@@ -2624,7 +2626,7 @@ function jyBotSell(st,t){
 /* langkah bot berikutnya (untuk tim bot / pemegang yang AFK): {t,div,mv} */
 function jyBotNext(st,all){
   for(const w of jyWaiting(st)){const T=st.teams[w.t];
-    if(!(T.bot||all))continue;
+    if(!(T.bot||T.auto||all))continue;
     return {t:w.t,div:w.div,mv:w.div==='sl'?jyBotSell(st,w.t):{type:'plan',d:jyBotPlan(st,w.t)}};}
   return null;
 }
@@ -3359,6 +3361,7 @@ function tmrRemind(st,l){
 function tickTimer(){
   if(view!=='table'||!cur||!cur.st)return;
   const st=cur.st, l=tmrLeft(st);
+  hostAutoTick(st);
   document.querySelectorAll('[data-tmr]').forEach(e=>{if(l==null){e.remove();return;}e.querySelector('b').textContent=fmtLeft(l);e.classList.toggle('warn',l<30000&&l>=10000);e.classList.toggle('crit',l<10000);});
   tmrRemind(st,l);
   if(l==null||l>0||cur.guided||ui.tmrBusy)return;
@@ -3425,7 +3428,7 @@ function afkReport(s,me,t){
   const A=s.afk; if(afkVoters(s,t).every(i=>A.yes.includes(s.players[i].id))){A.stage='count';A.until=Date.now()+AFK_COUNT;}
 }
 function afkCancel(s,me){const a=s.afk;if(!a)throw NOOP;if(a.by!==s.players[me].id)fail('Hanya pelapor pertama yang bisa membatalkan');s.afk=null;s.afkNote={m:nm(s,me)+' membatalkan laporan AFK',at:Date.now()};}
-function afkHere(s,me){const uid=s.players[me].id;if(s.afk&&s.afk.tid===uid){s.afk=null;s.afkNote={m:nm(s,me)+' kembali, laporan AFK dibatalkan',at:Date.now()};}if(s.players[me].auto){delete s.players[me].auto;s.afkNote={m:nm(s,me)+' kembali bermain sendiri (autopilot dimatikan)',at:Date.now()};}}
+function afkHere(s,me){const uid=s.players[me].id;if(s.game==='jualan'&&s.teams){const T=s.teams[jyTeamOf(s,me)];if(T&&T.auto){delete T.auto;T.members.forEach(i=>{delete s.players[i].auto;});s.afkNote={m:'🙋 '+nm(s,me)+' mengambil alih '+T.name+' dari bot',at:Date.now()};return;}}if(s.afk&&s.afk.tid===uid){s.afk=null;s.afkNote={m:nm(s,me)+' kembali, laporan AFK dibatalkan',at:Date.now()};}if(s.players[me].auto){delete s.players[me].auto;s.afkNote={m:nm(s,me)+' kembali bermain sendiri (autopilot dimatikan)',at:Date.now()};}}
 function afkResolve(s){
   const a=s.afk; if(!a||s.paused)throw NOOP;
   const t=s.players.findIndex(q=>q.id===a.tid);
@@ -3434,26 +3437,50 @@ function afkResolve(s){
   if(a.stage==='vote'){s.afk=null;s.afkNote={m:'Laporan AFK kedaluwarsa (tidak semua pemain ikut melapor)',at:Date.now()};return;}
   s.afkNote={m:'🤖 '+nm(s,t)+' tidak merespons — kini dimainkan autopilot',at:Date.now()}; s.players[t].auto=true; s.afk=null;
 }
+const HOST_GAMES=['pemukim','jualan','rapat','werewolf','wwk'];
+function hostGameOk(st){return st&&!cur.local&&st.status==='playing'&&(!st.game||HOST_GAMES.includes(st.game));}
 function hostName(st){const i=st.players.findIndex(q=>q.id===st.host);return i>=0?nm(st,i):'tuan rumah';}
-function hostCan(){const st=cur&&cur.st;return !!(st&&!cur.local&&online==='on'&&canWrite!==false&&afkGameOk(st)&&st.host===myId);}
+function hostCan(){const st=cur&&cur.st;return !!(st&&!cur.local&&online==='on'&&canWrite!==false&&hostGameOk(st)&&st.host===myId);}
 function hostOp(s,kind,i){
   if(s.host!==myId)fail('Hanya tuan rumah yang bisa mengatur meja');
   if(s.status!=='playing')fail('Permainan sudah selesai');
   const me=meIdx(s), who=me>=0?nm(s,me):'Tuan rumah', note=m=>{s.afkNote={m,at:Date.now()};};
   if(kind==='pause'){if(s.paused)throw NOOP;s.paused={at:Date.now(),by:myId};note('⏸️ '+who+' menjeda permainan');return;}
   if(kind==='resume'){if(!s.paused)throw NOOP;const d=Date.now()-s.paused.at;if(s.turnAt)s.turnAt+=d;if(s.afk&&s.afk.until)s.afk.until+=d;s.paused=null;note('▶ '+who+' melanjutkan permainan');return;}
-  if(kind==='skip'){if(s.paused)fail('Lanjutkan permainan dulu sebelum melewati giliran');const t=s.turn,name=nm(s,t);
+  if(kind==='skip'){if(s.paused)fail('Lanjutkan permainan dulu sebelum melewati giliran');
+    if(s.game==='jualan'){jyTimeoutRun(s);s.turnAt=Date.now();note('⏭ '+who+' melewati tahap ini (diisi otomatis)');return;}
+    if(s.game&&s.game!=='pemukim'){hubAct(s,me,{type:'timeout',forced:true});note('⏭ '+who+' melewati tahap ini');return;}
+    const t=s.turn,name=nm(s,t);
     if(s.game==='pemukim')pmTimeoutRun(s);else doMove(s,t,{type:'pass'});
     note('⏭ '+who+' melewati giliran '+name);return;}
+  if(kind==='tbot'||kind==='thuman'){const T=s.teams&&s.teams[i];if(!T||T.bot)fail('Tim tidak ditemukan');
+    if(kind==='tbot'){if(T.auto)throw NOOP;T.auto=true;T.members.forEach(j=>{s.players[j].auto=true;});note('🤖 '+T.name+' kini dimainkan bot (diatur tuan rumah)');}
+    else{if(!T.auto)throw NOOP;delete T.auto;T.members.forEach(j=>{delete s.players[j].auto;});note('🙋 '+T.name+' kembali dimainkan anggotanya');}
+    return;}
   const P=s.players[i]; if(!P)fail('Pemain tidak ditemukan');
   if(kind==='bot'){if(P.bot||P.auto)throw NOOP;P.auto=true;if(s.afk&&s.afk.tid===P.id)s.afk=null;note('🤖 '+nm(s,i)+' kini dimainkan bot (diatur tuan rumah)');return;}
   if(kind==='human'){if(!P.auto)throw NOOP;delete P.auto;note('🙋 '+nm(s,i)+' kembali bermain sendiri');return;}
   if(kind==='host'){if(P.bot)fail('Bot tidak bisa jadi tuan rumah');if(P.id===myId)throw NOOP;s.host=P.id;note('👑 '+nm(s,i)+' kini menjadi tuan rumah');return;}
   fail('Perintah tidak dikenal');
 }
+function hostAutoTick(st){
+  if(!cur||cur.local||!st||st.status!=='playing'||st.paused||canWrite===false||!myId)return;
+  if(!['rapat','werewolf','wwk'].includes(st.game))return;
+  const pend=rapatPending(st); if(!pend.length||!pend.every(i=>st.players[i]&&(st.players[i].auto||st.players[i].bot)))return;
+  const me=meIdx(st); if(me<0)return;
+  const humans=st.players.filter(q=>!q.bot&&!q.auto).map(q=>q.id), order=[st.host,...humans.filter(x=>x!==st.host)];
+  const runner=order.find(id=>id===myId||ONLINE.has(id)), stalled=st.turnAt&&Date.now()-st.turnAt>8000;
+  if(runner!==myId&&!stalled)return;
+  const key=cur.gid+':'+st.v; if(ui.hauto===key)return; ui.hauto=key; const v=st.v;
+  setTimeout(()=>{if(!cur||!cur.st||cur.st.v!==v)return;
+    commitOnline(s=>{if(s.v!==v||s.status!=='playing'||s.paused)throw NOOP;const p2=rapatPending(s);if(!p2.length||!p2.every(i=>s.players[i].auto||s.players[i].bot))throw NOOP;
+      s.log.push({p:-1,m:'🤖 Pilihan pemain otomatis diambil (bawaan).'});hubAct(s,meIdx(s),{type:'timeout',auto:true});}).catch(()=>{ui.hauto=null;});
+  },1500);
+}
 function hostDo(kind,i,ok){closeModal();commitOnline(s=>hostOp(s,kind,i)).then(()=>{if(ok)toast(ok);}).catch(e=>{if(!e||!e.noop)toast((e&&e.message)||'Gagal, coba lagi');});}
 function hostModal(){
   if(!hostCan())return;
+  if(cur.st.game&&cur.st.game!=='pemukim')return hostModalHub();
   const st=cur.st, t=st.turn, me=meIdx(st);
   const rows=st.players.map((p,i)=>{
     const tag=p.bot?'<span class="htag">🤖 Bot</span>':p.auto?'<span class="htag auto">🤖 Autopilot</span>':'';
@@ -3467,6 +3494,32 @@ function hostModal(){
     <button class="btn" data-act="hskip" ${st.paused?'disabled':''}>⏭ Lewati giliran ${esc(nm(st,t))}</button></div>
     <div class="hlist">${rows}</div>
     <div class="mute" style="font-size:12.5px;line-height:1.5;margin-top:8px">🤖 <b>Ganti bot</b>: giliran pemain itu dimainkan bot dan poinnya tetap miliknya. Pemain bisa mengambil alih lagi lewat tombol “Ambil alih”. 👑 <b>Jadikan tuan rumah</b>: kendali meja pindah ke pemain itu.</div>
+    <div class="mbtns"><button class="btn" data-act="close">Tutup</button></div>`);
+}
+function hostModalHub(){
+  const st=cur.st, me=meIdx(st), JY_=st.game==='jualan';
+  const pend=JY_?jyPending(st):rapatPending(st);
+  const skipLbl=JY_?'⏭ Lewati tahap ini (isi otomatis)':'⏭ Lewati tahap ini';
+  let teamRows='';
+  if(JY_)teamRows='<div class="hsub">Tim</div>'+st.teams.map((T,t)=>{
+    const tag=T.bot?'<span class="htag">🤖 Tim bot</span>':T.auto?'<span class="htag auto">🤖 Dimainkan bot</span>':'';
+    const btn=T.bot?'':T.auto?`<button class="btn sm" data-act="hthuman" data-i="${t}">🙋 Kembalikan</button>`:`<button class="btn sm" data-act="htbot" data-i="${t}">🤖 Ganti bot</button>`;
+    return `<div class="hrow"><div class="hname"><b>${esc(T.name)}</b> <span class="mute">${T.bot?'':T.members.map(i=>esc(nm(st,i))).join(', ')}</span> ${tag}</div><div class="hbtn">${btn}</div></div>`;}).join('');
+  const rows=st.players.map((p,i)=>{
+    if(p.bot)return '';
+    const tag=p.auto?'<span class="htag auto">🤖 Otomatis</span>':'', crown=p.id===st.host?' 👑':'', you=i===me?' <span class="mute">(kamu)</span>':'';
+    const wait=pend.includes(i)?' <span class="htag turnt">⏳ ditunggu</span>':'';
+    let btns='';
+    if(!JY_)btns+=p.auto?`<button class="btn sm" data-act="hhuman" data-i="${i}">🙋 Kembalikan</button>`:`<button class="btn sm" data-act="hbot" data-i="${i}">🤖 Ganti bot</button>`;
+    if(p.id!==st.host)btns+=`<button class="btn sm" data-act="hhost" data-i="${i}">👑 Jadikan tuan rumah</button>`;
+    return `<div class="hrow ${pend.includes(i)?'cur':''}"><div class="hname"><b>${esc(nm(st,i))}</b>${crown}${you} ${tag}${wait}</div><div class="hbtn">${btns}</div></div>`;}).join('');
+  const help=JY_?'🤖 <b>Ganti bot</b>: rencana dan jualan tim itu dimainkan bot; kasnya tetap milik tim. Anggota tim bisa mengambil alih lagi lewat tombol “Ambil alih”.'
+    :'🤖 <b>Ganti bot</b>: pemain itu tidak lagi ditunggu. Kalau tinggal dia yang belum memilih, pilihan bawaan diambil otomatis (sama seperti saat waktu habis). Dia bisa mengambil alih lagi lewat tombol “Ambil alih”.';
+  openModal(`<h3>⚙️ Atur meja</h3><p class="mute" style="font-size:13.5px;margin:0 0 10px">Hanya tuan rumah yang melihat menu ini. Semua pemain mendapat pemberitahuan setiap ada perubahan.</p>
+    <div class="hacts">${st.paused?'<button class="btn pri" data-act="hresume">▶ Lanjutkan permainan</button>':'<button class="btn" data-act="hpause">⏸️ Jeda permainan</button>'}
+    <button class="btn" data-act="hskip" ${st.paused?'disabled':''}>${skipLbl}</button></div>
+    <div class="hlist">${teamRows}<div class="hsub">Pemain</div>${rows}</div>
+    <div class="mute" style="font-size:12.5px;line-height:1.5;margin-top:8px">${help} 👑 <b>Jadikan tuan rumah</b>: kendali meja pindah ke pemain itu.</div>
     <div class="mbtns"><button class="btn" data-act="close">Tutup</button></div>`);
 }
 function hostConfirm(i){
@@ -3510,7 +3563,7 @@ function afkBarHTML(st){
 function afkTick(){
   let bar=$('#afkBar');
   const st=cur&&cur.st;
-  if(view!=='table'||!cur||!st||!afkGameOk(st)||online!=='on'){if(bar)bar.remove();return;}
+  if(view!=='table'||!cur||!st||!hostGameOk(st)||online!=='on'){if(bar)bar.remove();return;}
   if(st.afkNote&&st.afkNote.at!==ui.afkNoteAt){ui.afkNoteAt=st.afkNote.at;if(Date.now()-st.afkNote.at<15000)toast(st.afkNote.m);}
   const h=afkBarHTML(st);
   if(!bar){bar=document.createElement('div');bar.id='afkBar';document.body.appendChild(bar);}
@@ -3941,6 +3994,8 @@ document.addEventListener('click',async e=>{
     case 'hbot':hostDo('bot',+el.dataset.i,'🤖 Pemain diganti bot');break;
     case 'hhuman':hostDo('human',+el.dataset.i,'🙋 Pemain kembali bermain sendiri');break;
     case 'hhost':hostConfirm(+el.dataset.i);break;
+    case 'htbot':hostDo('tbot',+el.dataset.i,'🤖 Tim diganti bot');break;
+    case 'hthuman':hostDo('thuman',+el.dataset.i,'🙋 Tim kembali dimainkan anggotanya');break;
     case 'hhostok':hostDo('host',+el.dataset.i,'👑 Tuan rumah dipindahkan');break;
     case 'afkgo':{closeModal();const i=+el.dataset.i;afkCommit(s=>afkReport(s,meIdx(s),i),'🚨 Laporan AFK tercatat');break;}
     case 'afkcancel':afkCommit(s=>afkCancel(s,meIdx(s)));break;
@@ -5415,7 +5470,7 @@ function openLoginPop(){
 function jyMe(st){return cur&&cur.local?cur.human:meIdx(st);}
 function jyMyTeam(st){const me=jyMe(st);return me>=0?jyTeamOf(st,me):-1;}
 function jyDot(T){return `<span class="jydot" style="background:${T.col}"></span>`;}
-function jyNames(st,t){const T=st.teams[t];if(T.bot)return '🤖 Tim bot';return T.members.map(i=>esc(nm(st,i))).join(', ');}
+function jyNames(st,t){const T=st.teams[t];if(T.bot)return '🤖 Tim bot';return T.members.map(i=>esc(nm(st,i))).join(', ')+(T.auto?' · 🤖 dimainkan bot':'');}
 function jyRoleOf(st,t,div){const T=st.teams[t];if(T.bot)return '🤖';if(!st.split)return 'semua';const i=T.roles[div];return i!=null?esc(nm(st,i)):'–';}
 function jyForm(st){
   const t=jyMyTeam(st), r=(cur.lid||cur.gid)+':'+st.round+':'+t;
@@ -5657,7 +5712,7 @@ function jyMaybeBot(){
 }
 function jyOnlineBot(){
   if(!cur||cur.local||!cur.st||cur.st.game!=='jualan'||canWrite===false||!myId)return;
-  const st=cur.st; if(st.status!=='playing')return; const nx=jyBotNext(st,false); if(!nx)return;
+  const st=cur.st; if(st.status!=='playing'||st.paused)return; const nx=jyBotNext(st,false); if(!nx)return;
   const key=cur.gid+':'+st.v; if(ui.obKey===key)return;
   const humans=st.players.filter(q=>!q.bot).map(q=>q.id), order=[st.host,...humans.filter(x=>x!==st.host)];
   const runner=order.find(id=>id===myId||ONLINE.has(id)), stalled=st.turnAt&&Date.now()-st.turnAt>9000;
@@ -5670,7 +5725,7 @@ function jyOnlineBot(){
 function jyTimeoutRun(s){
   if(s.phase==='plan'){
     s.teams.forEach((T,t)=>{if(T.step!=='plan')return;
-      if(T.bot)return jyApplyBot(s,{t,mv:{type:'plan',d:jyBotPlan(s,t)}});
+      if(T.bot||T.auto)return jyApplyBot(s,{t,mv:{type:'plan',d:jyBotPlan(s,t)}});
       try{jyAct(s,-9,{type:'ready',team:t});}catch(e){if(!(e instanceof GameErr))throw e;T.draft=jyNewDraft();jyAct(s,-9,{type:'ready',team:t});}});
     s.log.push({p:-1,m:'⏱ Waktu rencana habis — rencana tiap tim dikirim apa adanya.'});}
   else if(s.phase==='sell'){const x=jyBotNext(s,true);if(x){jyApplyBot(s,x);s.log.push({p:-1,m:'⏱ Waktu habis — langkah jualan diambil otomatis.'});}}
@@ -5904,7 +5959,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-4';
+const BUILD_TAG='fb-5';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){

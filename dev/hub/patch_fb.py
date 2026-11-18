@@ -22,7 +22,7 @@ s=s[:first]+'''<script src="fb/firebase-app-compat.js"></script>
 rep("const ARTIFACT_URL='https://claude.ai/artifact/JGRDMJqpVSu1bvSWXVa2eG';","const ARTIFACT_URL=location.origin+location.pathname;")
 rep("const LEAGUE_URL='https://claude.ai/artifact/JGRDMJqpVSu1bvSWXVa2eG', PRACTICE_URL='https://claude.ai/artifact/7P5Jvn3qiMsHsC9c7qvtoh';","const LEAGUE_URL=location.origin+location.pathname, PRACTICE_URL=location.origin+location.pathname;")
 rep("<title>Serdik Tabletop — P3MDI</title>","<title>Serdik Tabletop</title>")
-rep("const BUILD_TAG='11.12-g';","const BUILD_TAG='fb-4';")
+rep("const BUILD_TAG='11.12-g';","const BUILD_TAG='fb-5';")
 
 # 3. teks yang menyebut login Claude / undangan
 rep("Mode online tidak tersedia di tampilan ini (perlu masuk ke akun Claude dan membuka halaman ini dari tautan yang dibagikan). Kamu tetap bisa <b>main lawan bot</b>.","Masuk dengan akun Google untuk main online bareng teman. Tanpa login kamu tetap bisa <b>main lawan bot</b>.")
