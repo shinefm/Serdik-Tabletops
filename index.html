@@ -746,6 +746,8 @@ body.light .pl.mine-pl.turn,body.light .pmpl.me.turn,body.light.myturn .m-ctrl{b
 #turnPill .ordn{background:#ffd25e;color:#1b1406;border-color:#ffd25e;margin:0 5px}
 body.light #turnPill{background:#fff;color:#2a2346}
 @media (prefers-reduced-motion:reduce){.pl.turn,.m-opp.turn,.pmpl.turn,.pl.mine-pl.turn,.pmpl.me.turn,body.myturn .m-ctrl{animation:none}}
+#turnPill.tmrwarn{border-color:#ff8a4c;background:#3a1f12;color:#ffe9dc}
+body.light #turnPill.tmrwarn{background:#fff1e8;color:#7a2e08;border-color:#e8692a}
 .gbtn{display:inline-flex;align-items:center;gap:8px;background:#fff!important;color:#1f1f1f!important;border:1px solid #dadce0!important}
 </style>
 </head>
@@ -840,8 +842,8 @@ function capHTML(n,max,own,pend,mini){
   let pips='';for(let i=0;i<Math.max(max,after);i++)pips+=`<i class="${i<n?'f':i<after?(i<max?'p':'o'):''}"></i>`;
   let txt;
   if(mini)txt='';
-  else if(own&&pend)txt=after>max?`setelah ambil ${after}/${max} → harus buang ${after-max}`:after===max?`setelah ambil pas ${max}/${max} (penuh)`:`setelah ambil ${after}/${max} · sisa ${max-after}`;
-  else if(own)txt=n>=max?'Penuh: ambil lagi = harus buang':`bisa tambah ${left} lagi`;
+  else if(own&&pend)txt=after>max?`setelah ambil ${after}/${max} → harus tukar ${after-max}`:after===max?`setelah ambil pas ${max}/${max} (penuh)`:`setelah ambil ${after}/${max} · sisa ${max-after}`;
+  else if(own)txt=n>=max?'Penuh: ambil lagi = harus tukar':`bisa tambah ${left} lagi`;
   else txt=n>=max?'penuh':`sisa ${left}`;
   return `<div class="cap ${cls} ${mini?'mini':''}" title="Permata yang dipegang (maks. ${max}, termasuk Emas)"><span class="cl">🪙 ${mini?'':'Permata '}<b>${n}/${max}</b></span><span class="pips">${pips}</span>${txt?`<span class="ct">${txt}</span>`:''}</div>`;
 }
@@ -909,10 +911,10 @@ function doMove0(st,pi,mv){
   }else if(mv.type==='pass'){msg=mv.timeout?'⏱ kehabisan waktu, giliran dilewati':mv.force?'dilewati oleh tuan rumah':'melewati giliran';}
   else fail('Aksi tidak dikenal');
   const dis=mv.discard||{}; let disN=0;
-  for(const c in dis){const n=dis[c]|0;if(!ALL.includes(c)||n<0||n>p.t[c])fail('Pilihan buang token tidak valid');p.t[c]-=n;st.bank[c]+=n;disN+=n;}
+  for(const c in dis){const n=dis[c]|0;if(!ALL.includes(c)||n<0||n>p.t[c])fail('Pilihan tukar token tidak valid');p.t[c]-=n;st.bank[c]+=n;disN+=n;}
   const tot=tokTotal(p);
   if(tot>MAXTOK)throw new GameErr('Token melebihi '+MAXTOK,'DISCARD',{over:tot-MAXTOK,t:clone(p.t)});
-  if(disN)msg+='; mengembalikan '+fmtTok(dis);
+  if(disN)msg+='; menukar balik '+fmtTok(dis)+' ke bank';
   st.log.push({p:pi,m:msg});
   const b=bonusOf(p);
   const k=st.patrons.findIndex(id=>{const nd=PAT[id].need;return Object.keys(nd).every(c=>b[c]>=nd[c]);});
@@ -1293,7 +1295,7 @@ function doDuelMove(st,pi,mv){
   // token limit: return extras to the bag
   let over=dTok(me)-MAXTOK;const back={};
   while(over>0){const c=[...DCOL,'p','y'].filter(x=>me.t[x]>0).sort((a,b)=>(me.t[b]-(b==='y'||b==='p'?2:0))-(me.t[a]-(a==='y'||a==='p'?2:0)))[0];me.t[c]--;st.bag.push(c);back[c]=(back[c]||0)+1;over--;}
-  if(Object.keys(back).length)msgs.push('mengembalikan '+Object.keys(back).map(c=>back[c]+' '+wn(c)).join(', ')+' (batas 10 token)');
+  if(Object.keys(back).length)msgs.push('menukar balik '+Object.keys(back).map(c=>back[c]+' '+wn(c)).join(', ')+' (batas 10 token)');
   st.log.push({p:pi,m:msgs.join('; ')});
   const bc=bestColor(me),cr=crownsOf(me),pts=ptsOf(me);
   let why=null;
@@ -3327,10 +3329,25 @@ function fmtLeft(ms){const s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/
 function timerHTML(st){const l=tmrLeft(st);if(l==null)return '';const mine=isHubGame(st)?(st.game==='jualan'?jyPending(st).includes(jyMe(st)):st.game==='pemukim'?pmPending(st).includes(pmMe(st)):rapatPending(st).includes(meIdx(st))):st.turn===actor(st);
   return `<span class="tmr ${l<10000?'crit':l<30000?'warn':''} ${mine?'mine':''}" data-tmr title="Waktu per giliran: ${timerLabel(st.timer)}">⏱ <b>${fmtLeft(l)}</b></span>`;}
 const NOOP=new Error('noop'); NOOP.noop=true;
+function tmrRemind(st,l){
+  if(l==null||l<=0||cur.guided||(st.game&&st.game!=='pemukim'))return;
+  const me=typeof turnSeat==='function'?turnSeat(st):actor(st);
+  if(me<0||st.turn!==me||(st.players[st.turn]||{}).bot)return;
+  const k=(cur.lid||cur.gid||'x')+':'+st.turnAt+':';
+  const marks=[[60000,'Tinggal 1 menit'],[30000,'Tinggal 30 detik']].filter(([ms])=>st.timer*1000>ms);
+  for(const [ms,txt] of marks){
+    if(l>ms||l<=ms-3000||ui.tmrRem===k+ms)continue;   // muncul sekali saat melewati batas
+    ui.tmrRem=k+ms;
+    if(typeof turnPill==='function')turnPill(`⏱ <b>${txt}</b> untuk giliranmu`,'tmrwarn');else toast('⏱ '+txt);
+    try{navigator.vibrate&&navigator.vibrate(ms===30000?[120,80,120]:150);}catch(e){}
+    break;
+  }
+}
 function tickTimer(){
   if(view!=='table'||!cur||!cur.st)return;
   const st=cur.st, l=tmrLeft(st);
   document.querySelectorAll('[data-tmr]').forEach(e=>{if(l==null){e.remove();return;}e.querySelector('b').textContent=fmtLeft(l);e.classList.toggle('warn',l<30000&&l>=10000);e.classList.toggle('crit',l<10000);});
+  tmrRemind(st,l);
   if(l==null||l>0||cur.guided||ui.tmrBusy)return;
   if(st.game==='jualan'){
     if(cur.local){const s=clone(st);jyTimeoutRun(s);cur.st=s;toast('⏱ Waktu habis — diisi otomatis');if(s.status==='ended')onGameEnded(s);render();return;}
@@ -3705,7 +3722,7 @@ function openDiscard(mv,ex){
 }
 function drawDiscard(){
   const {ex}=ui.disCtx, sum=Object.values(ui.dis).reduce((a,b)=>a+b,0);
-  openModal(`<h3>Kembalikan ${ex.over} token</h3><p class="mute" style="font-size:14px;margin:0">Maksimal ${MAXTOK} token di tangan. Klik token yang ingin dikembalikan ke bank (${sum}/${ex.over}).</p>
+  openModal(`<h3>🔄 Tukar ${ex.over} token</h3><p class="mute" style="font-size:14px;margin:0">Maksimal ${MAXTOK} token di tangan, jadi token baru harus ditukar dengan token lama. Klik token lama yang ingin ditukar ke bank (${sum}/${ex.over}).</p>
     <div class="dis">${ALL.filter(c=>ex.t[c]>0).map(c=>{const left=ex.t[c]-(ui.dis[c]||0);return `<div class="tok c-${c} ${ui.dis[c]?'sel':''}" data-act="disc" data-c="${c}">${gem(c)}<span class="cnt">${left}</span>${ui.dis[c]?`<span class="badge">−${ui.dis[c]}</span>`:''}</div>`;}).join('')}</div>
     <div class="mbtns"><button class="btn" data-act="disreset">Ulangi</button><button class="btn" data-act="close">Batal</button><button class="btn pri" data-act="disok" ${sum===ex.over?'':'disabled'}>Konfirmasi</button></div>`);
 }
@@ -3749,7 +3766,7 @@ function classicRules(){
   <li><b>Ambil 2 permata sejenis</b> — hanya bila stok warna itu minimal 4.</li>
   <li><b>Cadangkan 1 kartu</b> (terbuka atau dari tumpukan tertutup) dan dapat 1 Emas. Maksimal 3 cadangan. Caranya: ketuk <b>Emas</b> lalu ketuk kartu/tumpukan, atau ketuk kartunya lalu tekan Cadangkan.</li>
   <li><b>Beli 1 kartu</b> dari meja atau dari cadanganmu. Bonus kartu yang sudah kamu punya mengurangi harga; Emas adalah <b>joker</b> (dipisah di bank) yang bisa menggantikan warna apa pun.</li></ul>
-  <p><b>Batas token:</b> paling banyak ${MAXTOK} token di tangan; kelebihan harus dikembalikan.</p>
+  <p><b>Batas token:</b> paling banyak ${MAXTOK} token di tangan; kelebihan harus ditukar (token lama kembali ke bank).</p>
   <p><b>Pahlawan</b> otomatis memberi dukungan (+3 poin) di akhir giliranmu bila jumlah kartumu per warna memenuhi syaratnya. Satu pahlawan per giliran. Ketuk kartu pahlawan untuk membaca kisah inspirasinya.</p>
   <p><b>Seri:</b> pemenangnya yang memiliki kartu lebih sedikit.</p>
   <p class="mute">Kartu yang bisa kamu beli sekarang ditandai <b>BISA BELI!</b> dan garis hijau.</p>`;
@@ -5821,7 +5838,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-2';
+const BUILD_TAG='fb-3';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){

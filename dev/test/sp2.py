@@ -1,0 +1,35 @@
+import asyncio
+from playwright.async_api import async_playwright
+async def main():
+    async with async_playwright() as p:
+        b=await p.chromium.launch(executable_path='/usr/bin/google-chrome')
+        for vw,tag in [({'width':1280,'height':860},'d'),({'width':390,'height':844},'m')]:
+            pg=await b.new_page(viewport=vw); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
+            await pg.add_init_script(path='/home/claude/serdik-tabletops/dev/test/mock.js')
+            await pg.goto('file:///home/claude/serdik-tabletops/dev/saudagar-permata.html'); await pg.wait_for_timeout(1200)
+            await pg.evaluate("c0delay=()=>150")
+            await pg.click('[data-act="localSetup"]'); await pg.wait_for_timeout(250)
+            await pg.select_option('#lpTmr','180'); await pg.evaluate("document.querySelector('#lpOrd').value='0'")
+            await pg.click('[data-act="localStart"]'); await pg.wait_for_timeout(2500)
+            await pg.evaluate("closeModal&&closeModal()")
+            print(tag,'turn',await pg.evaluate("[cur.st.turn,actor(cur.st)]"))
+            await pg.evaluate("cur.st.turnAt=Date.now()-(180000-75000)"); await pg.wait_for_timeout(900)
+            print(' 75s pill shown:',await pg.evaluate("!!document.querySelector('#turnPill.show')"))
+            await pg.evaluate("cur.st.turnAt=Date.now()-(180000-59500)"); await pg.wait_for_timeout(700)
+            print(' 60s:',await pg.evaluate("(document.querySelector('#turnPill.show')||{}).textContent"))
+            await pg.screenshot(path=f'sp2_60_{tag}.png')
+            await pg.wait_for_timeout(2600)
+            await pg.evaluate("cur.st.turnAt=Date.now()-(180000-29500)"); await pg.wait_for_timeout(700)
+            print(' 30s:',await pg.evaluate("(document.querySelector('#turnPill.show')||{}).textContent"))
+            await pg.evaluate("cur.st.turnAt=Date.now()-(180000-29000)"); await pg.wait_for_timeout(600)
+            print(' no repeat key:',await pg.evaluate("ui.tmrRem"))
+            # tukar token
+            await pg.evaluate("cur.st.turnAt=Date.now();const P=cur.st.players[cur.st.turn];P.t={w:2,u:2,g:2,r:2,k:2,y:0};cur.st.bank={w:4,u:4,g:4,r:4,k:4,y:5};render()")
+            await pg.evaluate("attemptMove({type:'take',picks:{w:1,u:1,g:1}})"); await pg.wait_for_timeout(600)
+            print(' modal:',(await pg.evaluate("(document.querySelector('.modal h3')||document.querySelector('h3')||{}).textContent")))
+            await pg.screenshot(path=f'sp2_tukar_{tag}.png')
+            for c in ['r','k','w']: await pg.click(f'[data-act="disc"][data-c="{c}"]'); await pg.wait_for_timeout(120)
+            await pg.click('[data-act="disok"]'); await pg.wait_for_timeout(500)
+            print(' log:',await pg.evaluate("cur.st.log.filter(l=>l.p===0).slice(-1).map(l=>l.m)"),'tok',await pg.evaluate("Object.values(cur.st.players[0].t).reduce((a,b)=>a+b,0)"),'errs',errs)
+        await b.close()
+asyncio.run(main())
