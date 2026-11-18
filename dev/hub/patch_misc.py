@@ -11,5 +11,10 @@ rep('    <div class="brand">\n      <span class="brandico" aria-hidden="true">ðŸ
 rep("    case 'lobby':leaveTable();break;",
     "    case 'lobby':leaveTable();break;\n    case 'home':if(modalOpen())closeModal();if(view==='table')leaveTable();else window.scrollTo({top:0,behavior:'smooth'});break;")
 rep("</style>",".brand[data-act=\"home\"]{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}\n.brand[data-act=\"home\"]:active{transform:scale(.97)}\n</style>")
+# Tag MK di kartu game
+rep("desc:'Kumpulkan permata, beli kartu tambang sampai istana, dan raih dukungan pahlawan nasional. Bisa lawan bot.',mk:[['MK02','investasi bertahap']]",
+    "desc:'Kumpulkan permata, beli kartu tambang sampai istana, dan raih dukungan pahlawan nasional. Bisa lawan bot.',mk:[['MK02','investasi bertahap'],['MK05','decision making & game theory']]")
+rep("mk:[['MK02','alokasi anggaran'],['MK03','segmen & harga'],['MK04','kapasitas produksi']]",
+    "mk:[['MK02','alokasi anggaran'],['MK03','marketing'],['MK04','kapasitas produksi']]")
 open(F,'w').write(s)
 print('ok misc')
