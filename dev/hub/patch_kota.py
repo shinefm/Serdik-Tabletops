@@ -20,7 +20,8 @@ rep("  return st.players.map((p,i)=>({i,pts:ptsOf(p),n:p.cards.length})).sort((a
     "  if(st.mode==='kota')return kotaRanking(st);\n  return st.players.map((p,i)=>({i,pts:ptsOf(p),n:p.cards.length})).sort((a,b)=>b.pts-a.pts||a.n-b.n);\n}")
 # bot
 rep("  const help=card=>st.patrons.reduce(","  const help=card=>st.mode==='kota'?kotaHelp(st,p,b,card):st.patrons.reduce(")
-rep("function hardBotMove(st,pi,model,opt){\n","function hardBotMove(st,pi,model,opt){\n  if(st.mode==='kota')return botMove(st,pi,'hard');\n")
+rep("function hardBotMove(st,pi,model,opt){\n","function hardBotMove(st,pi,model,opt){\n  if(st.mode==='kota')return kotaMoveD(st,pi,P_KV);\n")
+rep("function botMove(st,pi,level,P){\n","function botMove(st,pi,level,P){\n  if(st.mode==='kota'&&level!=='easy'&&!P)return kotaMoveD(st,pi,level==='hard'?P_KV:P_KV_N);\n")
 
 # papan: kota menggantikan pahlawan (tampilan HP & desktop)
 
