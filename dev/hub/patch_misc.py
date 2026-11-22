@@ -44,5 +44,15 @@ rep("</style>",'''/* --- animasi dapat pahlawan/kota --- */
 @keyframes awconf{0%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(0) scale(.4);opacity:1}100%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-46vmin) rotate(220deg);opacity:0}}
 @media(prefers-reduced-motion:reduce){.awcard,.awrays,.awconf i{animation:none}}
 </style>''')
+# Pengaturan lawan bot: ikuti game yang sedang dimainkan & ingat setelah refresh
+rep("  const last=ui.lastLocal||{me:ui.nick||'Kamu',bots:randomBots(2),level:'normal',mode:'klasik'};\n  ui.lpMode=last.mode||'klasik';",
+    "  let saved=null;try{saved=JSON.parse(localStorage.getItem('sp_lastlocal')||'null');}catch(e){}\n"
+    "  const st0=cur&&cur.local&&!cur.guided&&cur.st&&!cur.st.game?cur.st:null;\n"
+    "  const now=st0?{mode:st0.mode==='duel'?'duel':st0.mode==='kota'?'kota':'klasik',level:cur.level||'normal',me:(st0.players[cur.human]||{}).nick||ui.nick||'Kamu',bots:st0.players.filter((p,i)=>i!==cur.human).map(p=>p.nick||'Bot')}:null;\n"
+    "  const last=Object.assign({me:ui.nick||'Kamu',bots:randomBots(2),level:'normal',mode:'klasik'},saved||{},ui.lastLocal||{},now||{});\n"
+    "  if(!last.bots||!last.bots.length)last.bots=randomBots(2);\n"
+    "  ui.lpMode=last.mode||'klasik';")
+rep("      ui.lastLocal={me,bots,level,mode:lmode,order:ord,timer:tmr};",
+    "      ui.lastLocal={me,bots,level,mode:lmode,order:ord,timer:tmr};try{localStorage.setItem('sp_lastlocal',JSON.stringify(ui.lastLocal));}catch(e){}")
 open(F,'w').write(s)
 print('ok misc')

@@ -4356,7 +4356,11 @@ function rulesModal(){openTutorial();}
 const BOT_POOL=['Daendels','Raffles','Van den Bosch','J.P. Coen','Van Heutsz','De Houtman','Speelman','Van Mook','Westerling','Imamura','Janssens','Van Imhoff','De Kock','Valckenier'];
 function randomBots(n,keep){const pool=shuffle(BOT_POOL.filter(x=>!(keep||[]).includes(x)));return Array.from({length:n},(_,i)=>pool[i]);}
 function localSetup(){
-  const last=ui.lastLocal||{me:ui.nick||'Kamu',bots:randomBots(2),level:'normal',mode:'klasik'};
+  let saved=null;try{saved=JSON.parse(localStorage.getItem('sp_lastlocal')||'null');}catch(e){}
+  const st0=cur&&cur.local&&!cur.guided&&cur.st&&!cur.st.game?cur.st:null;
+  const now=st0?{mode:st0.mode==='duel'?'duel':st0.mode==='kota'?'kota':'klasik',level:cur.level||'normal',me:(st0.players[cur.human]||{}).nick||ui.nick||'Kamu',bots:st0.players.filter((p,i)=>i!==cur.human).map(p=>p.nick||'Bot')}:null;
+  const last=Object.assign({me:ui.nick||'Kamu',bots:randomBots(2),level:'normal',mode:'klasik'},saved||{},ui.lastLocal||{},now||{});
+  if(!last.bots||!last.bots.length)last.bots=randomBots(2);
   ui.lpMode=last.mode||'klasik';
   openModal(`<h3>🤖 Lawan bot</h3><p class="mute" style="font-size:14px;margin:0 0 10px">Bot akan jalan otomatis di gilirannya. Nama bot sudah terisi — ubah kalau mau.</p>
     <div class="modesel"><button class="btn sm ${ui.lpMode==='klasik'?'on':''}" data-act="lpmode" data-m="klasik">💎 Klasik (2–4)</button><button class="btn sm ${ui.lpMode==='duel'?'on':''}" data-act="lpmode" data-m="duel">⚔️ Duel (1 lawan 1)</button><button class="btn sm ${ui.lpMode==='kota'?'on':''}" data-act="lpmode" data-m="kota">🏙️ Ekspansi Kota (2–4)</button></div>
@@ -4437,7 +4441,7 @@ document.addEventListener('click',async e=>{
       const me=($('#lpMe').value.trim())||'Kamu', bots=ui.lpBots.map((x,i)=>x.trim()||BOT_POOL[i]), level=$('#lpLv').value;
       const lmode=ui.lpMode||'klasik';
       const ord=($('#lpOrd')&&$('#lpOrd').value)||'random', tmr=+(($('#lpTmr')&&$('#lpTmr').value)||0);
-      ui.lastLocal={me,bots,level,mode:lmode,order:ord,timer:tmr};
+      ui.lastLocal={me,bots,level,mode:lmode,order:ord,timer:tmr};try{localStorage.setItem('sp_lastlocal',JSON.stringify(ui.lastLocal));}catch(e){}
       startLocalCfg(ui.lastLocal); break;}
     case 'restartlocal':restartLocal();break;
     case 'jylocal':jyLocalSetup();break;
@@ -6622,7 +6626,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-19';
+const BUILD_TAG='fb-20';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){
