@@ -4750,7 +4750,7 @@ async function saveLocalGame(){
   const st=cur.st, me=st.players[cur.human];
   const lite=clone(st); if(lite.log&&lite.log.length>80)lite.log=lite.log.slice(-80);
   const PMs=st.game==='pemukim';
-  const d={v:1,st:JSON.stringify(lite),human:cur.human,level:cur.level,lid:cur.lid,variant:PMs?'pemukim':st.mode==='duel'?'duel':'klasik',
+  const d={v:1,st:JSON.stringify(lite),human:cur.human,level:cur.level,lid:cur.lid,variant:PMs?'pemukim':st.mode==='duel'?'duel':st.mode==='kota'?'kota':'klasik',
     n:st.players.length,round:st.round,pts:PMs?pmVP(st,cur.human,true):ptsOf(me),bots:st.players.filter(p=>p.bot).map(p=>p.nick||'Bot').join(', '),savedAt:Date.now()};
   let ok=false;
   try{localStorage.setItem(saveKey(),JSON.stringify(d));ok=true;}catch(e){}
@@ -4800,14 +4800,14 @@ async function leaveTable(next){
   const st=cur.st, me=st.players[cur.human], old=await getSave();
   ui.afterLeave=next;
   openModal(`<h3>🚪 Keluar dari game lawan bot?</h3>
-    <p style="font-size:14px;line-height:1.55;margin:0">Game lawan bot ini belum selesai (<b>${st.game==='pemukim'?'🏝️ Pemukim':st.mode==='duel'?'⚔️ Duel':'Klasik'}</b> · ronde ${st.round} · skor kamu <b>${st.game==='pemukim'?pmVP(st,cur.human,true):ptsOf(me)}</b>). Simpan supaya bisa dilanjutkan nanti dari <b>📜 Riwayat</b> atau <b>👤 Profil</b>.</p>
-    ${old&&old.lid!==cur.lid?`<p class="bd" style="margin:8px 0 0">Hanya 1 game yang bisa disimpan. Simpanan lama (${old.variant==='pemukim'?'Pemukim':old.variant==='duel'?'Duel':'Klasik'}, ronde ${old.round}, ${fmtDate(old.savedAt)}) akan diganti.</p>`:''}
+    <p style="font-size:14px;line-height:1.55;margin:0">Game lawan bot ini belum selesai (<b>${st.game==='pemukim'?'🏝️ Pemukim':st.mode==='duel'?'⚔️ Duel':st.mode==='kota'?'🏙️ Ekspansi Kota':'Klasik'}</b> · ronde ${st.round} · skor kamu <b>${st.game==='pemukim'?pmVP(st,cur.human,true):ptsOf(me)}</b>). Simpan supaya bisa dilanjutkan nanti dari <b>📜 Riwayat</b> atau <b>👤 Profil</b>.</p>
+    ${old&&old.lid!==cur.lid?`<p class="bd" style="margin:8px 0 0">Hanya 1 game yang bisa disimpan. Simpanan lama (${old.variant==='pemukim'?'Pemukim':old.variant==='duel'?'Duel':old.variant==='kota'?'Ekspansi Kota':'Klasik'}, ronde ${old.round}, ${fmtDate(old.savedAt)}) akan diganti.</p>`:''}
     ${isGuest()?'<p class="bd" style="margin:8px 0 0">👤 Mode Tamu: tersimpan di browser ini saja.</p>':''}
     <div class="mbtns"><button class="btn" data-act="close">Batal</button><button class="btn" data-act="restartlocalok" title="Kartu dikocok ulang, bot dan level sama">🆕 Main game baru</button><button class="btn" data-act="nosavequit">Keluar tanpa simpan</button><button class="btn pri" data-act="savequit">💾 Simpan &amp; keluar</button></div>`);
 }
 function saveCardHTML(s,back){
   if(!s)return '';
-  return `<div class="savecard"><div class="si">💾</div><div class="sx"><b>Game tersimpan · lawan bot</b><div class="bd">${s.variant==='pemukim'?'🏝️ Pemukim':s.variant==='duel'?'⚔️ Duel':'Klasik'} · ${s.n} pemain · ${LVNAME[s.level]||''} · ronde ${s.round} · skor kamu ${s.pts}</div><div class="bd">vs ${esc(s.bots||'bot')} · disimpan ${fmtDate(s.savedAt)}</div></div>
+  return `<div class="savecard"><div class="si">💾</div><div class="sx"><b>Game tersimpan · lawan bot</b><div class="bd">${s.variant==='pemukim'?'🏝️ Pemukim':s.variant==='duel'?'⚔️ Duel':s.variant==='kota'?'🏙️ Ekspansi Kota':'Klasik'} · ${s.n} pemain · ${LVNAME[s.level]||''} · ronde ${s.round} · skor kamu ${s.pts}</div><div class="bd">vs ${esc(s.bots||'bot')} · disimpan ${fmtDate(s.savedAt)}</div></div>
     <div class="row"><button class="btn pri sm" data-act="resume">▶ Lanjutkan</button><button class="btn sm" data-act="delsave" data-back="${back||''}" title="Hapus simpanan" aria-label="Hapus game tersimpan">🗑</button></div></div>`;
 }
 async function resumeSaved(){
@@ -6622,7 +6622,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-18';
+const BUILD_TAG='fb-19';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){

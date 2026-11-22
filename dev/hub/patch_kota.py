@@ -57,6 +57,12 @@ rep("order:L.order||String(h),timer:L.timer!=null?L.timer:(st.timer||0)};\n}\nfu
 rep("level:L.level||cur.level||'normal',mode:st.mode==='duel'?'duel':'klasik',order:",
     "level:L.level||cur.level||'normal',mode:st.mode==='duel'?'duel':st.mode==='kota'?'kota':'klasik',order:")
 rep("${L.pm?'🏝️ Pemukim':L.mode==='duel'?'⚔️ Duel':'💎 Klasik'}","${L.pm?'🏝️ Pemukim':L.mode==='duel'?'⚔️ Duel':L.mode==='kota'?'🏙️ Ekspansi Kota':'💎 Klasik'}")
+# label mode Kota di dialog keluar & game tersimpan
+rep("Game lawan bot ini belum selesai (<b>${st.game==='pemukim'?'🏝️ Pemukim':st.mode==='duel'?'⚔️ Duel':'Klasik'}</b>",
+    "Game lawan bot ini belum selesai (<b>${st.game==='pemukim'?'🏝️ Pemukim':st.mode==='duel'?'⚔️ Duel':st.mode==='kota'?'🏙️ Ekspansi Kota':'Klasik'}</b>")
+rep("variant:PMs?'pemukim':st.mode==='duel'?'duel':'klasik',","variant:PMs?'pemukim':st.mode==='duel'?'duel':st.mode==='kota'?'kota':'klasik',")
+rep("Simpanan lama (${old.variant==='pemukim'?'Pemukim':old.variant==='duel'?'Duel':'Klasik'},","Simpanan lama (${old.variant==='pemukim'?'Pemukim':old.variant==='duel'?'Duel':old.variant==='kota'?'Ekspansi Kota':'Klasik'},")
+rep("${s.variant==='pemukim'?'🏝️ Pemukim':s.variant==='duel'?'⚔️ Duel':'Klasik'} · ","${s.variant==='pemukim'?'🏝️ Pemukim':s.variant==='duel'?'⚔️ Duel':s.variant==='kota'?'🏙️ Ekspansi Kota':'Klasik'} · ")
 # klik
 rep("    case 'sdteam':","    case 'kotainfo':kotaInfo(el.dataset.id);break;\n    case 'sdteam':")
 rep("</style>","""/* --- Ekspansi Kota --- */
