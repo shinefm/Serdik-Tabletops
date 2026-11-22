@@ -44,18 +44,5 @@ rep("</style>",'''/* --- animasi dapat pahlawan/kota --- */
 @keyframes awconf{0%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(0) scale(.4);opacity:1}100%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-46vmin) rotate(220deg);opacity:0}}
 @media(prefers-reduced-motion:reduce){.awcard,.awrays,.awconf i{animation:none}}
 </style>''')
-# Kartu pasar Tingkat I-III berbentuk persegi (Klasik & Kota)
-rep("</style>",'''/* --- kartu pasar persegi --- */
-.tier-row .card.rc{aspect-ratio:1/1}
-.tier-row .deck{aspect-ratio:auto}
-.tier-row .rc .rhead{height:27cqw;padding:0 3.5cqw 0 4.5cqw}
-.tier-row .rc .rpts{font-size:25cqw}
-.tier-row .rc .rgem{width:21cqw;height:21cqw}
-.tier-row .rc .rcost{flex-direction:row;flex-wrap:wrap-reverse;width:44cqw;gap:2cqw;left:6cqw;bottom:6cqw}
-.tier-row .rchip{width:19cqw;height:19cqw;font-size:15cqw}
-.tier-row .rc .rtier{right:6cqw;bottom:6cqw;font-size:10cqw}
-.tier-row .card.rc.can::after{top:52%}
-.tier-row .rc .rart svg{object-fit:cover}
-</style>''')
 open(F,'w').write(s)
 print('ok misc')
