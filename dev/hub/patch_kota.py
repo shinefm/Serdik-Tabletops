@@ -51,6 +51,12 @@ rep("ply:'2–4 pemain · Duel 2',","ply:'2–4 pemain · Duel 2 · Kota',")
 rep("<span>Pahlawan: ${p.pat.length?p.pat.map(id=>esc(PAT[id].name)).join(', '):'—'}</span>",
     "<span>${cur.st.mode==='kota'?'Kota: '+(p.kota?'🏙️ '+esc(KOTA[p.kota].name):'—'):'Pahlawan: '+(p.pat.length?p.pat.map(id=>esc(PAT[id].name)).join(', '):'—')}</span>")
 rep("${p.pat.length?' · 🎖️'+p.pat.length:''}</div><div class=\"pmeta\">","${p.pat.length?' · 🎖️'+p.pat.length:''}${p.kota?' · 🏙️'+esc(KOTA[p.kota].name):''}</div><div class=\"pmeta\">")
+# Main game baru / ulang: pertahankan mode Kota
+rep("order:L.order||String(h),timer:L.timer!=null?L.timer:(st.timer||0)};\n}\nfunction restartLocal(){",
+    "order:L.order||String(h),timer:L.timer!=null?L.timer:(st.timer||0)};\n}\nfunction restartLocal(){")
+rep("level:L.level||cur.level||'normal',mode:st.mode==='duel'?'duel':'klasik',order:",
+    "level:L.level||cur.level||'normal',mode:st.mode==='duel'?'duel':st.mode==='kota'?'kota':'klasik',order:")
+rep("${L.pm?'🏝️ Pemukim':L.mode==='duel'?'⚔️ Duel':'💎 Klasik'}","${L.pm?'🏝️ Pemukim':L.mode==='duel'?'⚔️ Duel':L.mode==='kota'?'🏙️ Ekspansi Kota':'💎 Klasik'}")
 # klik
 rep("    case 'sdteam':","    case 'kotainfo':kotaInfo(el.dataset.id);break;\n    case 'sdteam':")
 rep("</style>","""/* --- Ekspansi Kota --- */

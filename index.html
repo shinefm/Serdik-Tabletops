@@ -4784,12 +4784,12 @@ function restartCfg(){
   const st=cur.st, h=cur.human, bots=st.players.filter((p,i)=>i!==h).map(p=>p.nick||'Bot');
   if(st.game==='pemukim'){const L=ui.lastPm||{};return {pm:true,me:L.me||st.players[h].nick||'Kamu',bots:L.bots&&L.bots.length===bots.length?L.bots:bots,level:L.level||cur.level||'normal',order:L.order||String(h),timer:L.timer!=null?L.timer:(st.timer||0)};}
   const L=ui.lastLocal||{};
-  return {me:L.me||st.players[h].nick||'Kamu',bots:L.bots&&L.bots.length>=bots.length?L.bots:bots,level:L.level||cur.level||'normal',mode:st.mode==='duel'?'duel':'klasik',order:L.order||String(h),timer:L.timer!=null?L.timer:(st.timer||0)};
+  return {me:L.me||st.players[h].nick||'Kamu',bots:L.bots&&L.bots.length>=bots.length?L.bots:bots,level:L.level||cur.level||'normal',mode:st.mode==='duel'?'duel':st.mode==='kota'?'kota':'klasik',order:L.order||String(h),timer:L.timer!=null?L.timer:(st.timer||0)};
 }
 function restartLocal(){
   if(!cur||!cur.local)return;
   const L=restartCfg(), ended=cur.st.status!=='playing';
-  openModal(`<h3>🔁 Ulang dari awal?</h3><p style="font-size:14px;line-height:1.55;margin:0">Mulai game baru dengan pengaturan yang sama: <b>${L.pm?'🏝️ Pemukim':L.mode==='duel'?'⚔️ Duel':'💎 Klasik'}</b> · ${L.bots.length} bot (${esc(L.bots.join(', '))}) · level <b>${LVNAME[L.level]||L.level}</b> · urutan ${L.order==='random'?'diacak':'tetap'}.</p>
+  openModal(`<h3>🔁 Ulang dari awal?</h3><p style="font-size:14px;line-height:1.55;margin:0">Mulai game baru dengan pengaturan yang sama: <b>${L.pm?'🏝️ Pemukim':L.mode==='duel'?'⚔️ Duel':L.mode==='kota'?'🏙️ Ekspansi Kota':'💎 Klasik'}</b> · ${L.bots.length} bot (${esc(L.bots.join(', '))}) · level <b>${LVNAME[L.level]||L.level}</b> · urutan ${L.order==='random'?'diacak':'tetap'}.</p>
     ${ended?'':'<p class="bd" style="margin:8px 0 0">Game yang sedang berjalan tidak akan disimpan dan tidak tercatat.</p>'}
     <div class="mbtns"><button class="btn" data-act="close">Batal</button><button class="btn pri" data-act="restartlocalok">🔁 Ulang sekarang</button></div>`);
 }
@@ -6622,7 +6622,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-17';
+const BUILD_TAG='fb-18';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){
