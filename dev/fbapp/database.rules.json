@@ -5,6 +5,31 @@
       "$uid": {
         ".write": "auth != null && auth.uid === $uid"
       }
+    },
+    "chat": {
+      "$gid": {
+        ".read": "auth != null",
+        ".write": "auth != null && !newData.exists() && (data.child('m').child(auth.uid).exists() || data.child('last').val() < now - 21600000)",
+        "m": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isBoolean()"
+          }
+        },
+        "last": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        },
+        "msg": {
+          "$mid": {
+            ".write": "auth != null && !data.exists() && newData.child('u').val() === auth.uid",
+            ".validate": "newData.hasChildren(['u', 'n', 't', 'ts']) && newData.child('t').isString() && newData.child('t').val().length > 0 && newData.child('t').val().length <= 200 && newData.child('n').isString() && newData.child('n').val().length <= 40 && newData.child('ts').isNumber() && newData.child('ts').val() <= now"
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

@@ -56,11 +56,23 @@
   function getAt(path){if(path==='.info/connected')return true;let o=R;for(const k of path.split('/').filter(Boolean)){if(o==null||typeof o!=='object')return null;o=o[k];}return o===undefined?null:o;}
   function setAt(path,v){const ks=path.split('/').filter(Boolean);let o=R;for(let i=0;i<ks.length-1;i++){o=o[ks[i]]=o[ks[i]]&&typeof o[ks[i]]==='object'?o[ks[i]]:{};}if(v===null)delete o[ks[ks.length-1]];else o[ks[ks.length-1]]=clone(v);const P=ks.join('/');rL.filter(l=>!l.path.startsWith('.info')&&(P.startsWith(l.path)||l.path.startsWith(P))).forEach(l=>later(()=>l.f(snap(l.path))));}
   function snap(path){const v=getAt(path);return {key:path.split('/').pop(),val:()=>clone(v),forEach(f){if(v&&typeof v==='object')Object.keys(v).forEach(k=>f(snap(path+'/'+k)));}};}
+  const TV=x=>x&&typeof x==='object'?(x['.sv']?Date.now():Object.fromEntries(Object.entries(x).map(([k,y])=>[k,TV(y)]))):x;
+  let pushN=0;
+  function onRef(path,ev,f,lim){
+    if(ev!=='child_added'){rL.push({path,f,o:f});later(()=>f(snap(path)));return f;}
+    const seen={};const g=sn=>{const v=sn.val();if(!v||typeof v!=='object')return;let ks=Object.keys(v).sort();if(lim)ks=ks.slice(-lim);ks.forEach(k=>{if(seen[k])return;seen[k]=1;f(snap(path+'/'+k));});};
+    rL.push({path,f:g,o:f});later(()=>g(snap(path)));return f;}
+  function offRef(f){const i=rL.findIndex(l=>l.o===f);if(i>=0)rL.splice(i,1);}
+  window.__RTDBOPS=[];
   function rref(path){return {key:path.split('/').pop(),
-    async set(v){const T=x=>x&&typeof x==='object'?Object.fromEntries(Object.entries(x).map(([k,y])=>[k,y&&y['.sv']?Date.now():T(y)])):x;setAt(path,T(v));},
-    async remove(){setAt(path,null);},
-    on(ev,f){rL.push({path,f});later(()=>f(snap(path)));return f;},
-    off(ev,f){const i=rL.findIndex(l=>l.f===f);if(i>=0)rL.splice(i,1);},
+    async set(v){window.__RTDBOPS.push(['set',path]);setAt(path,TV(v));},
+    async remove(){window.__RTDBOPS.push(['remove',path]);setAt(path,null);},
+    async update(o){window.__RTDBOPS.push(['update',path]);Object.keys(o).forEach(k=>setAt(path+'/'+k,TV(o[k])));},
+    child(p){return rref(path+'/'+p);},
+    push(){pushN++;return rref(path+'/'+Date.now().toString(36).padStart(10,'0')+String(pushN).padStart(5,'0'));},
+    limitToLast(n){return {on:(ev,f)=>onRef(path,ev,f,n),off:(ev,f)=>offRef(f)};},
+    on(ev,f){return onRef(path,ev,f);},
+    off(ev,f){offRef(f);},
     onDisconnect(){return {remove:async()=>{}};}};}
   const rtdb={ref:rref};
   const apps=[];

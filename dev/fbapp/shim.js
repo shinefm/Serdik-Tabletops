@@ -3,7 +3,8 @@
    - Dokumen disimpan sebagai JSON di field `_j` (aman dari undefined & array bersarang),
      ditambah beberapa field indeks untuk query (createdAt, endedAt, host, ids, ...).
    - Lobi membaca koleksi `lobby` (ringkasan kecil), bukan state penuh `games`, supaya hemat kuota baca.
-   - Status online memakai Realtime Database `presence/<uid>/<tab>`. */
+   - Status online memakai Realtime Database `presence/<uid>/<tab>`.
+   - Chat meja memakai Realtime Database `chat/<gid>` dan dihapus saat game selesai. */
 (function(){
   'use strict';
   if(!window.firebase||!window.FIREBASE_CONFIG){console.warn('Firebase belum dimuat');return;}
@@ -169,6 +170,22 @@
     };
   }
 
+  /* ---------- chat meja (sementara, Realtime Database chat/<gid>) ----------
+     Tidak pernah ditulis ke Firestore. Dihapus saat game selesai / meja dihapus. */
+  function chatApi(u){
+    const TS=()=>firebase.database.ServerValue.TIMESTAMP;
+    const ok=g=>typeof g==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(g);
+    return {
+      join(gid){if(!ok(gid))return Promise.reject(new Error('gid'));return rtdb.ref('chat/'+gid+'/m/'+u.uid).set(true);},
+      send(gid,n,t){if(!ok(gid))return Promise.reject(new Error('gid'));const r=rtdb.ref('chat/'+gid);const k=r.child('msg').push().key;
+        const up={};up['msg/'+k]={u:u.uid,n:String(n).slice(0,40),t:String(t).slice(0,200),ts:TS()};up.last=TS();return r.update(up);},
+      on(gid,cb){if(!ok(gid))return ()=>{};const q=rtdb.ref('chat/'+gid+'/msg').limitToLast(60);
+        const h=s=>{const v=s.val();if(v&&typeof v==='object')cb(Object.assign({},v,{id:s.key}));};
+        q.on('child_added',h,()=>{});return ()=>q.off('child_added',h);},
+      clear(gid){if(!ok(gid))return Promise.resolve();return rtdb.ref('chat/'+gid).remove();}
+    };
+  }
+
   /* ---------- pintu masuk yang dipanggil game ---------- */
   window.claude={
     async use(name){
@@ -177,6 +194,7 @@
       if(name==='db')return db;
       if(name==='user')return userApi(u);
       if(name==='room')return roomApi(u);
+      if(name==='chat')return chatApi(u);
       return null;
     }
   };

@@ -869,6 +869,30 @@ body.light #turnPill.tmrwarn{background:#fff1e8;color:#7a2e08;border-color:#e869
 @keyframes awup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes awconf{0%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(0) scale(.4);opacity:1}100%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-46vmin) rotate(220deg);opacity:0}}
 @media(prefers-reduced-motion:reduce){.awcard,.awrays,.awconf i{animation:none}}
+/* --- chat meja --- */
+.log.haschat{max-height:none;overflow:visible}
+.log .lgpane{padding:0;border:0}
+.log.haschat .lglog{max-height:220px;overflow:auto}
+.lgtabs{display:inline-flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel);vertical-align:middle}
+.lgtabs button{font:inherit;font-size:14px;color:var(--mute);background:none;border:0;border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:34px}
+.lgtabs button b{color:inherit}
+.lgtabs button.on{background:var(--gold);color:#1f1830;font-weight:700}
+.lgtabs .cbadge{font-style:normal;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:800;min-width:18px;height:18px;line-height:18px;padding:0 5px;border-radius:999px;background:#e5484d;color:#fff;text-align:center}
+.lgtabs .cbadge[hidden]{display:none}
+.chatbox{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.log .chatbox,.log .chatbox div{padding:0;border:0}
+.chatlist{max-height:240px;min-height:120px;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:4px 2px}
+.log .chatlist .cmsg,.chatlist .cmsg{align-self:flex-start;max-width:86%;padding:6px 10px;border:1px solid var(--line);border-radius:12px 12px 12px 4px;background:var(--panel);font-size:13.5px;line-height:1.35;overflow-wrap:anywhere}
+.log .chatlist .cmsg.me,.chatlist .cmsg.me{align-self:flex-end;border-radius:12px 12px 4px 12px;background:color-mix(in srgb,var(--gold) 22%,var(--panel))}
+.cmsg .cn{display:block;font-weight:800;font-size:12px;color:var(--gold)}
+.cmsg .cw{display:block;font-size:10.5px;color:var(--mute);text-align:right;margin-top:2px}
+.chatempty{color:var(--mute);font-size:13px;text-align:center;margin:auto 0}
+.chatin{display:flex;gap:6px}
+.chatin input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-size:16px}
+.chatin input:disabled{opacity:.65}
+.chatnote{font-size:11.5px;color:var(--mute)}
+.jychat summary{list-style:none;cursor:pointer}
+.jychat .lglog{max-height:240px;overflow:auto}
 .gbtn{display:inline-flex;align-items:center;gap:8px;background:#fff!important;color:#1f1f1f!important;border:1px solid #dadce0!important}
 </style>
 </head>
@@ -3511,6 +3535,139 @@ function refreshNames(ids){
 function meIdx(st){return myId?st.players.findIndex(p=>p.id===myId):-1;}
 
 /* ================= RENDER ================= */
+/* ---------- Chat meja online ----------
+   Tab "Chat" di samping "Catatan" pada setiap game online.
+   Pesan lewat Realtime Database chat/<gid> selama game berlangsung saja: tidak masuk Firestore,
+   riwayat, atau replay, dan seluruh chat dihapus begitu game selesai atau meja dihapus. */
+const CH={gid:null,api:null,unsub:null,msgs:[],seen:{},el:null,unread:0,wiped:false,last:0,member:false,tok:0,at:0,noApi:false};
+ui.logTab=ui.logTab||'log';
+function chatOn(){return !!(CH.gid&&cur&&!cur.local&&cur.gid===CH.gid);}
+function chatWant(){return (!CH.noApi&&view==='table'&&online==='on'&&cur&&!cur.local&&cur.gid&&cur.st&&cur.st.status&&cur.st.status!=='lobby')?cur.gid:null;}
+function chatCls(){return chatOn()?' haschat':'';}
+function logSum(title){
+  if(!chatOn())return title;
+  const t=ui.logTab==='chat'?'chat':'log';
+  return `<span class="lgtabs" role="tablist"><button type="button" role="tab" data-lt="log" class="${t==='log'?'on':''}" aria-selected="${t==='log'}">${title}</button><button type="button" role="tab" data-lt="chat" class="${t==='chat'?'on':''}" aria-selected="${t==='chat'}">💬 Chat<i class="cbadge"${CH.unread?'':' hidden'}>${CH.unread}</i></button></span>`;
+}
+function logPanes(logs){
+  if(!chatOn())return logs;
+  const t=ui.logTab==='chat'?'chat':'log';
+  return `<div class="lgpane lglog"${t==='log'?'':' hidden'}>${logs}</div><div class="lgpane" id="chatSlot"${t==='chat'?'':' hidden'}></div>`;
+}
+async function chatApi(){
+  if(CH.api)return CH.api;
+  try{const a=await claude.use('chat');if(a&&a.send)CH.api=a;}catch(e){}
+  return CH.api;
+}
+function chatStop(){
+  if(CH.unsub){try{CH.unsub();}catch(e){}}
+  CH.unsub=null;CH.gid=null;CH.msgs=[];CH.seen={};CH.unread=0;CH.wiped=false;CH.member=false;CH.tok++;
+  if(CH.el){CH.el.remove();CH.el=null;}
+}
+function chatStart(gid){
+  chatStop(); CH.gid=gid; CH.at=Date.now(); const tok=CH.tok;
+  chatBuild();
+  chatApi().then(api=>{
+    if(!api||tok!==CH.tok){if(!api&&tok===CH.tok){CH.noApi=true;chatStop();render();}return;}
+    const st=cur&&cur.st;
+    if(st&&meIdx(st)>=0&&canWrite!==false){CH.member=true;api.join(gid).catch(()=>{});}
+    CH.unsub=api.on(gid,m=>{if(tok!==CH.tok)return;chatAdd(m);});
+    chatMaybeWipe();
+  });
+}
+/* game selesai: chat dihapus dari server, layar tetap menampilkan pesan sampai keluar meja */
+function chatMaybeWipe(){
+  if(!CH.gid||CH.wiped||!cur||!cur.st||cur.st.status!=='ended')return;
+  CH.wiped=true; chatInputState();
+  if(CH.member&&CH.api)CH.api.clear(CH.gid).catch(()=>{});
+}
+function chatBuild(){
+  const el=document.createElement('div'); el.className='chatbox';
+  el.innerHTML=`<div class="chatlist" role="log" aria-live="polite" aria-label="Pesan chat"><div class="chatempty">Belum ada pesan. Sapa teman semejamu 👋</div></div>
+    <form class="chatin" autocomplete="off"><input type="text" maxlength="200" placeholder="Tulis pesan…" aria-label="Tulis pesan chat" enterkeyhint="send"><button class="btn pri sm" type="submit">Kirim</button></form>
+    <div class="chatnote">Chat hanya selama game berjalan dan dihapus otomatis saat game selesai.</div>`;
+  el.querySelector('form').addEventListener('submit',e=>{e.preventDefault();chatSend();});
+  CH.el=el; chatInputState();
+}
+function chatInputState(){
+  if(!CH.el)return;
+  const inp=CH.el.querySelector('input'), btn=CH.el.querySelector('button'), note=CH.el.querySelector('.chatnote');
+  const st=cur&&cur.st, seated=!!(st&&meIdx(st)>=0&&canWrite!==false);
+  const off=CH.wiped||!seated;
+  inp.disabled=off; btn.disabled=off;
+  inp.placeholder=CH.wiped?'Game selesai — chat ditutup':!seated?'Hanya pemain di meja ini yang bisa mengirim pesan':'Tulis pesan…';
+  note.textContent=CH.wiped?'Game selesai. Chat sudah dihapus dari server dan hilang saat kamu keluar dari meja.':'Chat hanya selama game berjalan dan dihapus otomatis saat game selesai.';
+}
+function chatTime(ts){try{const d=new Date(ts);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}catch(e){return '';}}
+function chatAdd(m){
+  if(!m||!m.id||CH.seen[m.id]||typeof m.t!=='string')return;
+  CH.seen[m.id]=1; CH.msgs.push(m); if(CH.msgs.length>80)CH.msgs.shift();
+  if(!CH.el)return;
+  const list=CH.el.querySelector('.chatlist'), atEnd=list.scrollHeight-list.scrollTop-list.clientHeight<40;
+  const e=list.querySelector('.chatempty'); if(e)e.remove();
+  const mine=m.u===myId, row=document.createElement('div');
+  row.className='cmsg'+(mine?' me':'');
+  row.innerHTML=`<span class="cn">${mine?'Kamu':esc(m.n||'Pemain')}</span><span class="ct">${esc(m.t)}</span><span class="cw">${chatTime(m.ts)}</span>`;
+  list.appendChild(row);
+  while(list.children.length>80)list.firstChild.remove();
+  if(atEnd||mine)list.scrollTop=list.scrollHeight;
+  if(!mine&&!chatVisible()&&!(m.ts&&m.ts<CH.at-3000)){CH.unread++;chatBadge();toast('💬 '+(m.n||'Pemain')+': '+m.t.slice(0,60));}
+}
+function chatVisible(){
+  const slot=document.getElementById('chatSlot');
+  if(!slot||slot.hidden)return false;
+  const d=slot.closest('details'); return !d||d.open;
+}
+function chatBadge(){
+  document.querySelectorAll('.lgtabs .cbadge').forEach(b=>{b.textContent=CH.unread;b.hidden=!CH.unread;});
+}
+async function chatSend(){
+  if(!CH.el||!chatOn()||CH.wiped)return;
+  const inp=CH.el.querySelector('input'), t=inp.value.replace(/\s+/g,' ').trim().slice(0,200);
+  if(!t)return;
+  const now=Date.now(); if(now-CH.last<700){toast('Pelan-pelan ya 🙂');return;}
+  const st=cur.st, me=meIdx(st); if(me<0||canWrite===false)return;
+  CH.last=now; inp.value='';
+  const name=String(nm(st,me)).replace(/ 🤖$/,'').slice(0,40)||'Pemain';
+  try{const api=await chatApi();if(!api)throw 0;if(!CH.member){CH.member=true;await api.join(CH.gid).catch(()=>{});}await api.send(CH.gid,name,t);}
+  catch(e){toast('Pesan gagal terkirim');if(!inp.value)inp.value=t;}
+}
+/* setiap render: elemen chat yang sama dipindah ke slot baru supaya ketikan & fokus tidak hilang */
+function chatMount(){
+  if(!CH.el)return;
+  const slot=document.getElementById('chatSlot');
+  if(!slot){if(CH.el.parentNode)CH.el.remove();return;}
+  if(CH.el.parentNode!==slot){slot.appendChild(CH.el);const l=CH.el.querySelector('.chatlist');l.scrollTop=l.scrollHeight;}
+  chatInputState();
+  if(chatVisible()&&CH.unread){CH.unread=0;chatBadge();}
+}
+function chatSwitch(det,t){
+  ui.logTab=t;
+  det.querySelectorAll('.lgtabs [data-lt]').forEach(b=>{const on=b.dataset.lt===t;b.classList.toggle('on',on);b.setAttribute('aria-selected',on);});
+  det.querySelectorAll('.lgpane').forEach(p=>{p.hidden=(p.id==='chatSlot')!==(t==='chat');});
+  if(t==='chat'){CH.unread=0;chatBadge();const l=CH.el&&CH.el.querySelector('.chatlist');if(l)l.scrollTop=l.scrollHeight;}
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.lgtabs [data-lt]'); if(!b)return;
+  e.preventDefault(); e.stopPropagation();
+  const det=b.closest('details'), t=b.dataset.lt;
+  if(det&&det.open&&ui.logTab===t){det.open=false;ui.logOpen=false;return;}
+  if(det&&!det.open){det.open=true;ui.logOpen=true;}
+  chatSwitch(det||document,t);
+},true);
+const _renderNoChat=render;
+render=function(){
+  const want=chatWant();
+  if(want!==CH.gid){if(want)chatStart(want);else chatStop();}
+  const inp=CH.el&&CH.el.querySelector('input'), foc=!!(inp&&document.activeElement===inp);
+  let a=0,b=0; if(foc){a=inp.selectionStart;b=inp.selectionEnd;}
+  _renderNoChat();
+  chatMount();
+  chatMaybeWipe();
+  if(foc&&inp.isConnected){inp.focus({preventScroll:true});try{inp.setSelectionRange(a,b);}catch(e){}}
+};
+
+function chatClearGid(id){if(!id)return;chatApi().then(a=>{if(a)return a.clear(id);}).catch(()=>{});}
 function render(){
   $('#backBtn').style.display=view==='table'?'':'none';
   document.body.classList.toggle('gend',!!(view==='table'&&cur&&cur.st&&cur.st.status==='ended'));
@@ -3754,7 +3911,7 @@ function renderDuel(){
       <div class="hint" style="margin-top:8px">${hint}</div>
     </section>
     <section class="panel d-me">${duelPlayerHTML(st,meI,seat>=0,myTurn)}</section>
-    <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan permainan</summary>${logs}</details>
+    <details class="panel log${chatCls()}" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">${logSum('Catatan permainan')}</summary>${logPanes(logs)}</details>
   </div>`;
   awardWatch(st); maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
 }
@@ -4178,7 +4335,7 @@ function renderGameMobile(){
       ${rows}
     </section>
     ${ctrl}
-    <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan permainan</summary>${logs}</details>
+    <details class="panel log${chatCls()}" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">${logSum('Catatan permainan')}</summary>${logPanes(logs)}</details>
   </div>`;
   awardWatch(st); maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
 }
@@ -4253,7 +4410,7 @@ function renderGame(){
         <div class="hint">${hint}</div>
       </div>
       <div class="players">${players}</div>
-      <details class="panel log" ${ui.logOpen??(window.innerWidth>760)?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer;margin-bottom:4px">Catatan permainan</summary>${logs}</details>
+      <details class="panel log${chatCls()}" ${ui.logOpen??(window.innerWidth>760)?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer;margin-bottom:4px">${logSum('Catatan permainan')}</summary>${logPanes(logs)}</details>
     </aside></div>`;
   awardWatch(st); maybeEndPopup(st); maybeRankPop(st); maybeBot(); maybeOnlineBot();
 }
@@ -4507,7 +4664,7 @@ document.addEventListener('click',async e=>{
     case 'afkcancel':afkCommit(s=>afkCancel(s,meIdx(s)));break;
     case 'afkhere':afkCommit(s=>afkHere(s,meIdx(s)),'👍 Kamu kembali memegang kendali');break;
     case 'lobdel':{const g=lobbyGames.find(x=>x._id===el.dataset.g);ui.lobDel=el.dataset.g;openModal(`<h3>🗑 Hapus “${esc(el.dataset.n)}”?</h3><p class="mute" style="font-size:14px">${g&&g.status==='playing'?'Game di meja ini <b>sedang berjalan</b>. ':''}Meja dihapus untuk semua pemain dan tidak bisa dikembalikan.</p><div class="mbtns"><button class="btn" data-act="close">Batal</button><button class="btn danger" data-act="lobdelok">Hapus meja</button></div>`);break;}
-    case 'lobdelok':{closeModal();const id=ui.lobDel;ui.lobDel=null;if(!id)break;try{await db.doc('games/'+id).delete();lobbyGames=lobbyGames.filter(x=>x._id!==id);toast('🗑 Meja dihapus');render();}catch(err){toast('Gagal menghapus meja');}break;}
+    case 'lobdelok':{closeModal();const id=ui.lobDel;ui.lobDel=null;if(!id)break;try{await db.doc('games/'+id).delete();chatClearGid(id);lobbyGames=lobbyGames.filter(x=>x._id!==id);toast('🗑 Meja dihapus');render();}catch(err){toast('Gagal menghapus meja');}break;}
     case 'gotables':{const t=$('#tableList');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});break;}
     case 'restartlocalok':{closeModal();const L=restartCfg();if(cur&&cur.lid)ui.saved[cur.lid]=true;if(L.jy)jyStartCfg(L);else if(L.pm)pmStartCfg(L);else startLocalCfg(L);toast('🆕 Game baru dimulai — kartu dikocok ulang');break;}
     case 'create':createTable();break;
@@ -4599,7 +4756,7 @@ document.addEventListener('click',async e=>{
     case 'start':tableAction('start');break;
     case 'delete':
       openModal(`<h3>Hapus meja ini?</h3><p class="mute">Semua pemain akan kehilangan meja ini.</p><div class="mbtns"><button class="btn" data-act="close">Batal</button><button class="btn danger" data-act="delok">Hapus</button></div>`);break;
-    case 'delok':closeModal();try{await db.doc('games/'+cur.gid).delete();backToLobby();}catch(err){toast('Gagal menghapus meja');}break;
+    case 'delok':closeModal();try{chatClearGid(cur.gid);await db.doc('games/'+cur.gid).delete();backToLobby();}catch(err){toast('Gagal menghapus meja');}break;
     case 'tok':{
       if(!st||st.status!=='playing')return; ui.gres=false;
       const seat=actor(st); if(seat!==st.turn||(!cur.local&&canWrite===false))return toast('Belum giliranmu');
@@ -5340,7 +5497,7 @@ function renderRapat(){
     <section class="panel"><div class="rpl">${chips}</div><div style="margin-top:10px;display:grid;gap:4px">${showLV?'':lvHTML}${mh}</div>
       ${(st.vhist||[]).length?'<button class="btn sm" style="margin-top:8px" data-act="rvhist">📊 Riwayat voting</button>':''}
       ${isHost&&!ended?'<button class="btn sm" style="margin-top:8px;margin-left:6px" data-act="rforce" title="Untuk pemain yang terputus atau tidak merespons">⏩ Lanjutkan paksa</button>':''}</section>
-    <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan rapat</summary>${logs}</details>
+    <details class="panel log${chatCls()}" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">${logSum('Catatan rapat')}</summary>${logPanes(logs)}</details>
   </div>`;
   if(!ended&&mi>=0){ui.roleShown=ui.roleShown||{};if(!ui.roleShown[cur.gid]){ui.roleShown[cur.gid]=true;setTimeout(()=>{if(cur&&cur.st&&isHubGame(cur.st)&&cur.st.status==='playing'&&!modalOpen())openRoleModal(true);},400);}}
   maybeEndPopup(st);
@@ -5462,7 +5619,7 @@ function renderSandi(){
     <section class="panel ract sdact">${act}</section>
     <section class="panel"><div class="sdboard">${cards}</div>
       <div class="sdlegend bd">${spy&&!ended?'Kamu ketua: kartu bergaris menunjukkan kunci (🔴 Merah, 🔵 Biru, ⬜ netral, 💥 Audit). Hanya ketua yang melihatnya.':'Ketuk kartu yang sudah terbuka untuk membaca arti istilahnya.'}</div></section>
-    <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan permainan</summary>${logs}</details>
+    <details class="panel log${chatCls()}" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">${logSum('Catatan permainan')}</summary>${logPanes(logs)}</details>
   </div>`;
   if(ui.sdFoc){const x=$('#sdW');if(x){x.focus();const L=x.value.length;try{x.setSelectionRange(L,L);}catch(e){}}}
   if(!ended&&mi>=0){ui.sdRoleShown=ui.sdRoleShown||{};if(!ui.sdRoleShown[cur.gid]){ui.sdRoleShown[cur.gid]=true;setTimeout(()=>{if(cur&&cur.st&&cur.st.game==='sandi'&&cur.st.status==='playing'&&!modalOpen())sdRoleModal();},400);}}
@@ -5706,7 +5863,7 @@ function renderWerewolf(){
       <div class="bd" style="margin:12px 0 6px">Kartu tengah</div><div class="wwcen">${center}</div>
       ${isHost&&!ended?`<button class="btn sm" style="margin-top:10px" data-act="rforce">⏩ ${ph==='night'?'Akhiri malam sekarang':'Akhiri diskusi & hitung suara'}</button>`:''}</section>
     ${chron?`<section class="panel"><h3 style="font-size:16px;margin-bottom:6px">🌙 Kronologi malam</h3>${chron}</section>`:''}
-    <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan permainan</summary>${logs}</details>
+    <details class="panel log${chatCls()}" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">${logSum('Catatan permainan')}</summary>${logPanes(logs)}</details>
   </div>`;
   maybeEndPopup(st);
 }
@@ -5838,7 +5995,7 @@ function renderPemukim(){
       ${P?`<section class="panel"><div class="row" style="justify-content:space-between;align-items:center"><h3 style="font-size:16px"><span class="pmdot" style="background:${PM_COL[me]}"></span>Kartumu</h3><span class="bd">${pmVP(st,me,true)} poin · 🏠 ${5-pc.s} 🏙️ ${4-pc.c} 🛤️ ${15-pc.r} tersisa</span></div>${hand}${devs}${actions?`<div class="pmact">${actions}</div>`:''}</section>`:'<section class="panel"><span class="bd">👀 Kamu menonton meja ini.</span></section>'}
       ${off}
       <section class="panel"><div class="pmpls">${players}</div>${ended?'<button class="btn pri sm" style="margin-top:8px" data-act="showend">Lihat hasil</button>':''}</section>
-      <details class="panel log" ${ui.logOpen??(window.innerWidth>760)?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer;margin-bottom:4px">Catatan permainan</summary>${logs}</details>
+      <details class="panel log${chatCls()}" ${ui.logOpen??(window.innerWidth>760)?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer;margin-bottom:4px">${logSum('Catatan permainan')}</summary>${logPanes(logs)}</details>
     </aside></div>`;
   maybeEndPopup(st); pmMaybeBot(); pmOnlineBot();
 }
@@ -6080,7 +6237,7 @@ function renderWK(){
       ${isHost&&!ended?`<button class="btn sm" style="margin-top:10px" data-act="rforce">⏩ ${ph==='night'?'Akhiri malam sekarang':ph==='day'?'Akhiri diskusi & hitung suara':'Lewati Pemburu (tembak acak)'}</button>`:''}</section>
     ${deaths?`<section class="panel"><h3 style="font-size:16px;margin-bottom:6px">⚰️ Makam desa</h3>${deaths}</section>`:''}
     ${ended?`<section class="panel"><h3 style="font-size:16px;margin-bottom:6px">🌙 Kronologi malam</h3>${wkChron(st)}</section>`:''}
-    <details class="panel log" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">Catatan permainan</summary>${logs}</details>
+    <details class="panel log${chatCls()}" ${ui.logOpen?'open':''} ontoggle="ui.logOpen=this.open"><summary style="font-family:Fraunces,serif;font-weight:600;font-size:15px;cursor:pointer">${logSum('Catatan permainan')}</summary>${logPanes(logs)}</details>
   </div>`;
   maybeEndPopup(st);
 }
@@ -6317,7 +6474,7 @@ function renderJualan(){
     ${jyDemSec2}
     <section class="panel"><h2 class="jyh2">🏪 Semua tim</h2><div class="jytms">${jyTeamsHTML(st,mt)}</div>
       ${ended?'<button class="btn pri" data-act="jyend" style="margin-top:10px">🏆 Lihat hasil akhir</button>':''}</section>
-    <section class="panel"><details ${innerWidth>900?'open':''}><summary><b>Catatan permainan</b></summary><div class="logbox">${log}</div></details></section>
+    <section class="panel${chatOn()?' jychat':''}"><details ${(chatOn()?(ui.logOpen??(innerWidth>900)):innerWidth>900)?'open':''} ontoggle="if(chatOn())ui.logOpen=this.open"><summary>${logSum('<b>Catatan permainan</b>')}</summary>${logPanes('<div class="logbox">'+log+'</div>')}</details></section>
   </div>`;
   jyMaybeRecap(st);
 }
@@ -6644,7 +6801,7 @@ function backToLobby(){
   $('#app').innerHTML=''; render();
 }
 const IDLE_MS=2*3600e3;
-const BUILD_TAG='fb-21';
+const BUILD_TAG='fb-22';
 function staleGame(g,now){const t=g.updatedAt||g.createdAt||0;
   return (g.status==='ended'&&now-t>2*60e3)||((g.status==='lobby'||g.status==='playing')&&now-t>IDLE_MS);}
 async function cleanupGames(){
@@ -6652,7 +6809,7 @@ async function cleanupGames(){
   const now=Date.now(); let pool=[...lobbyGames];
   try{const sn=await db.collection('games').orderBy('createdAt','asc').limit(30).get();pool=pool.concat(sn.docs.map(d=>({...d.data(),_id:d.id})));}catch(e){}
   const seen={}; let n=0;
-  for(const g of pool){if(seen[g._id]||n>=15)continue;seen[g._id]=1;if(staleGame(g,now)&&!(cur&&cur.gid===g._id)){try{await db.doc('games/'+g._id).delete();n++;}catch(e){}}}
+  for(const g of pool){if(seen[g._id]||n>=15)continue;seen[g._id]=1;if(staleGame(g,now)&&!(cur&&cur.gid===g._id)){try{await db.doc('games/'+g._id).delete();chatClearGid(g._id);n++;}catch(e){}}}
 }
 function subscribeLobby(){
   const timer=setTimeout(()=>{lobbyTimedOut=true;render();},10000);
